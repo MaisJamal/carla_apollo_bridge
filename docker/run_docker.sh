@@ -5,6 +5,8 @@ docker run \
     --gpus=all \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -tid \
-    -v $PWD/..:/root/carla_apollo_bridge \
-    --name carla-apollo \
-    carla-apollo
+    -v $PWD/..:/root/carla_apollo_bridge_13 \
+    --name carla-apollo-13 \
+    carla-apollo-13
+
+

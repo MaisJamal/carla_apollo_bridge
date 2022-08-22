@@ -40,6 +40,8 @@ class ObjectSensor(object):
             obstacles.header.CopyFrom(self.bridge.get_cyber_header())
             for actor in self.bridge.child_actors.values():
                 if actor.carla_actor is not self.parent_actor:
+                    print ("actor in object sensore: ", actor.carla_actor)
+                    print("actor: ", self.get_actor_display_name(actor.carla_actor))
                     if actor.carla_actor.get_location().distance(self.parent_actor.get_location()) <= self.range:
                         if isinstance(actor.carla_actor, carla.Vehicle):
                             obstacles.perception_obstacle.append(actor.get_cyber_obstacle_msg())
@@ -48,3 +50,6 @@ class ObjectSensor(object):
                             msg.type = PerceptionObstacle.Type.PEDESTRIAN
                             obstacles.perception_obstacle.append(msg)
             self.bridge.write_cyber_message(self.channel_name, obstacles)
+    def get_actor_display_name(self,actor, truncate=250):
+        name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
+        return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name

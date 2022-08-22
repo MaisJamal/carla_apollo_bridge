@@ -116,6 +116,7 @@ class EgoVehicle(Vehicle):
         :return: the created vehicle actor
         :rtype: carla_ros_bridge.Vehicle or derived type
         """
+        print("actor id: ",carla_actor)
         return EgoVehicle(carla_actor=carla_actor, parent=parent)
 
     def __init__(self, carla_actor, parent):
@@ -138,7 +139,7 @@ class EgoVehicle(Vehicle):
 
         self.vehicle_info_published = False
         self.planned_trajectory = None
-        self.control_mode = False
+        self.control_mode = True#False
 
         # self.enable_autopilot_subscriber = rospy.Subscriber(
         #     self.topic_name() + "/enable_autopilot",
@@ -147,8 +148,8 @@ class EgoVehicle(Vehicle):
         cyber.init()
         self.cyber_node = cyber.Node('carla_ego_node')
         self.cyber_node.create_reader('/apollo/control', ControlCommand, self.cyber_control_command_updated)
-        self.cyber_node.create_reader('/apollo/planning', ADCTrajectory, self.planning_callback)
-        self.cyber_node.create_reader('/apollo/routing_response', RoutingResponse, self.routing_callback)
+        #self.cyber_node.create_reader('/apollo/planning', ADCTrajectory, self.planning_callback)
+        #self.cyber_node.create_reader('/apollo/routing_response', RoutingResponse, self.routing_callback)
         self.tf_writer = self.cyber_node.create_writer('/tf', TransformStampeds)
 
     def get_marker_color(self):
@@ -267,7 +268,7 @@ class EgoVehicle(Vehicle):
         chassis_msg.parking_brake = self.carla_actor.get_control().hand_brake
         chassis_msg.header.CopyFrom(self.get_cyber_header())
         chassis_msg.driving_mode = Chassis.DrivingMode.COMPLETE_AUTO_DRIVE
-        self.write_cyber_message('/apollo/canbus/chassis', chassis_msg)
+        self.write_cyber_message('/apollo/canbus/chassis_old', chassis_msg)
 
         # if not self.vehicle_info_published:
         #     self.vehicle_info_published = True
@@ -306,7 +307,7 @@ class EgoVehicle(Vehicle):
         # @todo: do we still need this?
         if not self.parent.get_param("challenge_mode"):
             localization_msg = self.get_localization_msg()
-            self.write_cyber_message('/apollo/localization/pose', localization_msg)
+            self.write_cyber_message('/apollo/localization/pose_old', localization_msg)
 
             tfs = TransformStampeds()
             tf_msg = self.get_tf()
@@ -339,7 +340,8 @@ class EgoVehicle(Vehicle):
         wp = self.parent.map.get_waypoint(transform.location)
         dt = timestamp - self.planned_trajectory.header.timestamp_sec
         for tp in self.planned_trajectory.trajectory_point:
-            if dt < tp.relative_time:
+            #if dt < tp.relative_time:
+            if tp.relative_time == 0 :
                 # place car a bit above the ground
                 # especially needed in Town02 where the car goes under the map
                 height_buffer = 0.1

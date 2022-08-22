@@ -50,7 +50,15 @@ class CarlaCyberBridge(Parent):
         # register callback to create/delete actors
         self.update_child_actors_lock = threading.Lock()
         self.carla_world.on_tick(self._carla_update_child_actors)
-
+        ######### for testing / Mais ##########
+        #blueprints = [bp for bp in self.carla_world.get_blueprint_library().filter('*')]
+        #for blueprint in blueprints:
+        #    print(blueprint.id)
+        #for attr in blueprint:
+        #    print('  - {}'.format(attr))
+        #
+        ###########################################
+        
         # register callback to update actors
         self.update_lock = threading.Lock()
         self.carla_world.on_tick(self._carla_time_tick)
@@ -121,7 +129,10 @@ class CarlaCyberBridge(Parent):
         :return:
         """
         if cyber.ok():
+            print("carla tick")
             if self.update_lock.acquire(False):
+                print("update lock false")
+                print(self.timestamp_last_run, "   ", carla_timestamp.elapsed_seconds)
                 if self.timestamp_last_run < carla_timestamp.elapsed_seconds:
                     self.timestamp_last_run = carla_timestamp.elapsed_seconds
                     # can't do this since there's no 'sim time' in cyber
@@ -143,9 +154,11 @@ class CarlaCyberBridge(Parent):
         :return:
         """
         if cyber.ok():
+            print("_carla_update_child_actors is called")
             if self.update_child_actors_lock.acquire(False):
                 # cache actor_list once during this update-loop
                 self.actor_list = self.carla_world.get_actors()
+                #print(self.actor_list) ##### added by Mais
                 self.update_child_actors()
                 # actors are only created/deleted around once per second
                 time.sleep(1)

@@ -96,20 +96,26 @@ class Parent(object):
         :return:
         """
         for actor in self.get_actor_list():
+            #print("carla_id ",self.carla_id) added by mais
             if ((actor.parent and actor.parent.id == self.carla_id)
                     or (actor.parent is None and self.carla_id == 0)):
+                #print("entered first if.")
                 if actor.id not in self.child_actors:
+                    #print("new actor.")
                     if self.get_param("challenge_mode"):
+                        #print("challenge mode")
                         # in challenge mode only the ego vehicle and its sensors are created
                         if actor.type_id.startswith("vehicle") and \
                                 (actor.attributes.get('role_name') ==
                                  self.get_param('ego_vehicle').get('role_name')):
+                            print("will create actor")
                             self.new_child_actors[actor.id] = EgoVehicle.create_actor(
                                 carla_actor=actor, parent=self)
                         elif actor.type_id.startswith("sensor"):
                             self.new_child_actors[actor.id] = Sensor.create_actor(
                                 carla_actor=actor, parent=self)
                     else:
+                        #print("not challenge mode")
                         if actor.type_id.startswith('traffic'):
                             self.new_child_actors[actor.id] = Traffic.create_actor(
                                 carla_actor=actor, parent=self)
@@ -202,6 +208,7 @@ class Parent(object):
         with self.update_child_actor_list_lock:
             for actor_id, actor in self.child_actors.iteritems():
                 try:
+                    #print("updating actor: ",actor_id)
                     actor.update()
                 except RuntimeError as e:
                     logging.warning("Update actor {}({}) failed: {}".format(
