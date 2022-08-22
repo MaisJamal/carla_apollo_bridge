@@ -56,7 +56,7 @@ cd apollo
 
 ```
 
-#### Run Carla docker container
+#### Run Carla docker container 
 
 ```
 # run on local machine:
