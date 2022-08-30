@@ -159,7 +159,8 @@ from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle,
 #from modules.localization.proto.clock_pb2 import Clock
 #from carla_common.clock_pb2 import Clock
 
-from transforms3d.euler import euler2mat, quat2euler, euler2quat
+#from transforms3d.euler import euler2mat, quat2euler, euler2quat
+from carla_common.euler import euler2mat, quat2euler, euler2quat
 import carla_common.transforms as trans
 # ==============================================================================
 # ------- Cyber Nodes ----------------------------------------------------------
@@ -222,12 +223,33 @@ class ApolloFeatures:
         roll = math.radians(transform.rotation.roll)
         pitch = -math.radians(transform.rotation.pitch)
         yaw = -math.radians(transform.rotation.yaw )
+        yaw_for_orientation = -math.radians(transform.rotation.yaw + 90)  ## for testing  ## checked
         
-        quat = euler2quat(roll, pitch, yaw)  # w , x, y, z
+        quat = euler2quat(roll, pitch, yaw_for_orientation)  # w , x, y, z
         localization_msg.pose.orientation.qw = quat[0]
         localization_msg.pose.orientation.qx = quat[1]
         localization_msg.pose.orientation.qy = quat[2]
         localization_msg.pose.orientation.qz = quat[3]
+
+
+        #######################################################################################
+        ####################### Carla transform.rotation to Euler angles #################
+
+        roll_apollo = transform.rotation.roll
+        pitch_apollo = -transform.rotation.pitch
+        yaw_apollo = -(transform.rotation.yaw +90 ) 
+        if roll_apollo < 0 : 
+            roll_apollo = 360 + roll_apollo     
+        if pitch_apollo < 0 : 
+            pitch_apollo = 360 + pitch_apollo     
+        if yaw_apollo < 0 : 
+            yaw_apollo = 360 + yaw_apollo     
+        localization_msg.pose.euler_angles.x = roll_apollo           ## for testing
+        localization_msg.pose.euler_angles.y = pitch_apollo         ## for testing
+        localization_msg.pose.euler_angles.z = yaw_apollo    ## for testing
+
+
+
 
         #######################################################################################
         ####################### Carla transform to Apollo transform ###########################
@@ -270,13 +292,20 @@ class ApolloFeatures:
         #######################################################################################
         ####################### Carla velocity to Apollo linear and angular velocity ##########
         ## linear velocity and rotation are needed
-        numpy_array = euler2mat(roll, pitch, yaw)
+        
+        numpy_array = euler2mat(roll, pitch, yaw) # roll, pitch, yaw should be in radian
+        #numpy_array = euler2mat(roll_apollo, pitch_apollo, yaw_apollo)
+        #print(numpy_array)
+
         rotation_matrix = numpy_array[:3, :3]
         tmp_array = rotation_matrix.dot(np.array([linear_vel.x, linear_vel.y, linear_vel.z]))
-        
-        localization_msg.pose.linear_velocity.x = tmp_array[0]
-        localization_msg.pose.linear_velocity.y = -tmp_array[1]
-        localization_msg.pose.linear_velocity.z = tmp_array[2]
+        #print(rotation_matrix)
+        #minus_90_rotation_matrix = np.array([  [0.0000000, 1.0000000,  0.0000000], [-1.0000000 , 0.0000000,  0.0000000]  ,[  0.0000000,  0.0000000 , 1.0000000 ]])### for testing
+        #tmp_array = minus_90_rotation_matrix.dot(tmp_array)  ############# for testing 
+
+        localization_msg.pose.linear_velocity.x = linear_vel.y#tmp_array[0] 
+        localization_msg.pose.linear_velocity.y = linear_vel.x#-tmp_array[1]
+        localization_msg.pose.linear_velocity.z = linear_vel.z#tmp_array[2]
    
 
         localization_msg.pose.angular_velocity_vrf.x =   math.radians(angular_vel.x)
@@ -296,12 +325,12 @@ class ApolloFeatures:
         #localization_msg.pose.linear_velocity.y = linear_vel.y
         #localization_msg.pose.linear_velocity.z = linear_vel.z
 
+        localization_msg.pose.linear_acceleration.x = -accel.y        ## for testing  / it was accel.x
+        localization_msg.pose.linear_acceleration.y = - accel.x       ## for testing  / it was -accel.y
+        localization_msg.pose.linear_acceleration.z = accel.z  + 9.8  ## for testing
         localization_msg.pose.linear_acceleration_vrf.x = accel.x
         localization_msg.pose.linear_acceleration_vrf.y = -accel.y
-        localization_msg.pose.linear_acceleration_vrf.z = accel.z
-        localization_msg.pose.linear_acceleration.x = accel.x
-        localization_msg.pose.linear_acceleration.y = -accel.y
-        localization_msg.pose.linear_acceleration.z = accel.z
+        localization_msg.pose.linear_acceleration_vrf.z = accel.z + 9.8       ## for testing
         localization_msg.pose.heading = heading
         #print("old x : ", x)
         #print("old y : ", y)
@@ -360,8 +389,8 @@ class ApolloFeatures:
             elif isinstance(actor, carla.Walker):
                 walkers_num +=1
                 
-        print("walkers: ", walkers_num)
-        print("vehicles: ", vehicles_num)        
+        #print("walkers: ", walkers_num)
+        #print("vehicles: ", vehicles_num)        
         #for actor in self.bridge.child_actors.values():
         """
         
