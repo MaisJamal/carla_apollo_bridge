@@ -162,6 +162,8 @@ from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle,
 #from transforms3d.euler import euler2mat, quat2euler, euler2quat
 from carla_common.euler import euler2mat, quat2euler, euler2quat
 import carla_common.transforms as trans
+from scipy.spatial.transform import Rotation as R
+
 # ==============================================================================
 # ------- Cyber Nodes ----------------------------------------------------------
 # ==============================================================================
@@ -303,9 +305,9 @@ class ApolloFeatures:
         #minus_90_rotation_matrix = np.array([  [0.0000000, 1.0000000,  0.0000000], [-1.0000000 , 0.0000000,  0.0000000]  ,[  0.0000000,  0.0000000 , 1.0000000 ]])### for testing
         #tmp_array = minus_90_rotation_matrix.dot(tmp_array)  ############# for testing 
 
-        localization_msg.pose.linear_velocity.x = linear_vel.y#tmp_array[0] 
-        localization_msg.pose.linear_velocity.y = linear_vel.x#-tmp_array[1]
-        localization_msg.pose.linear_velocity.z = linear_vel.z#tmp_array[2]
+        localization_msg.pose.linear_velocity.x = linear_vel.y #tmp_array[0] 
+        localization_msg.pose.linear_velocity.y = linear_vel.x #-tmp_array[1]
+        localization_msg.pose.linear_velocity.z = linear_vel.z #tmp_array[2]
    
 
         localization_msg.pose.angular_velocity_vrf.x =   math.radians(angular_vel.x)
@@ -324,13 +326,40 @@ class ApolloFeatures:
         #localization_msg.pose.linear_velocity.x = linear_vel.x
         #localization_msg.pose.linear_velocity.y = linear_vel.y
         #localization_msg.pose.linear_velocity.z = linear_vel.z
+        linear_a_x =  accel.y   ## for testing- accel.y   ## for testing
+        linear_a_y = accel.x   ## for testing- accel.x   ## for testing
+        linear_a_z = accel.z  + 9.8   ## for testing
 
-        localization_msg.pose.linear_acceleration.x = -accel.y        ## for testing  / it was accel.x
-        localization_msg.pose.linear_acceleration.y = - accel.x       ## for testing  / it was -accel.y
-        localization_msg.pose.linear_acceleration.z = accel.z  + 9.8  ## for testing
-        localization_msg.pose.linear_acceleration_vrf.x = accel.x
-        localization_msg.pose.linear_acceleration_vrf.y = -accel.y
-        localization_msg.pose.linear_acceleration_vrf.z = accel.z + 9.8       ## for testing
+        localization_msg.pose.linear_acceleration.x = linear_a_x        ## for testing  / it was accel.x
+        localization_msg.pose.linear_acceleration.y = linear_a_y       ## for testing  / it was -accel.y
+        localization_msg.pose.linear_acceleration.z = linear_a_z  ## for testing
+
+        ################ linear acceleration in vehicle coordination system in Apollo #################
+
+        ### calculate rotation matrix ####
+        heading_in_degrees = -1* transform.rotation.yaw
+        if heading_in_degrees < 0 :
+            heading_in_degrees += 360
+        rotation_angle = heading_in_degrees - 90   # rotation angle around z from velocity/acceleration frame to vehicle frame
+        ##                         ^ Y'                                 
+        ##                         |
+        ##                         |         (vehicle frame)            
+        ##                         |
+        ##         heading <-------o------->X'                        o------->Y                                 
+        ##                                                            |
+        ##                                                            |               (external frame in which velocity and acceleration are given)            
+        ##                                                            |
+        ##                                                            v X
+
+        r = R.from_euler('z', rotation_angle, degrees=True)
+        print("rotation angle: ",rotation_angle)
+        rot_mat = r.as_dcm()
+        print(rot_mat) # print rotation matrix
+        rot_mat = r.inv().as_dcm()
+        rotated_a = rot_mat.dot(np.array([linear_a_x, linear_a_y, linear_a_z]))
+        localization_msg.pose.linear_acceleration_vrf.x = rotated_a[0]
+        localization_msg.pose.linear_acceleration_vrf.y = rotated_a[1]
+        localization_msg.pose.linear_acceleration_vrf.z = rotated_a[2]       ## for testing
         localization_msg.pose.heading = heading
         #print("old x : ", x)
         #print("old y : ", y)
@@ -598,7 +627,8 @@ class SensorManager:
             cyber_point = PointXYZIT()
             cyber_point.x = lidar_point[0]
             cyber_point.y = lidar_point[1]
-            cyber_point.z = lidar_point[2]
+            cyber_point.z = -lidar_point[2]
+            cyber_point.intensity = int(-lidar_point[3] * 255)
             #if lidar_point[2] >=0 :
             #    print("positive z.")
             lidar_msg.point.append(cyber_point)

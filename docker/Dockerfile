@@ -4,13 +4,16 @@ RUN apt update && \
     apt-get install -y gedit && \
     apt install -y python-pip && \
     pip install --upgrade pip && \
+    #python -m pip install --upgrade --force-reinstall pip && \
+    #pip install transforms3d && \
     pip install \
             numpy \
             opencv-python==4.2.0.32 \
             protobuf \
             pygame \
             pyproj \
-            pyyaml
+            pyyaml \
+            scipy
 
 RUN echo "source /apollo/cyber/setup.bash" >> ~/.bashrc && \
     echo "CARLA_PYTHON_ROOT=~/carla_apollo_bridge_13/carla-python-0.9.13" >> ~/.bashrc && \
