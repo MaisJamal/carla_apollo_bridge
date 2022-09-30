@@ -49,10 +49,9 @@ Now in the apollo container, build apollo...
 ./apollo.sh build_gpu
 ```
 
-Add [https://gitlab.com/sdbcs-nio3/itl_mipt/planning/self-driving-car/carla_maps](Carla Maps) to Apollo.
+Add [Carla Maps](https://gitlab.com/sdbcs-nio3/itl_mipt/planning/self-driving-car/carla_maps) to Apollo.
 
-Start Apollo Dreamview and run the following modules: Routing, Planning, Third party perception, Prediction and Control.
-To monitor the planning and control process turn PNC monitor on.
+
 
 ## Usage
 
@@ -64,6 +63,17 @@ cd apollo
 ./docker/scripts/dev_into.sh
 
 ```
+
+Start Apollo Dreamview inside the container. 
+
+```
+bash scripts/bootstrap.sh
+
+```
+
+In Dreamview run the following modules: Routing, Planning, Third party perception, Prediction and Control.
+
+To monitor the planning and control process turn PNC monitor on.
 
 #### Run Carla docker container 
 
