@@ -28,11 +28,16 @@ The following commands will be run with 3 containers:
 
 ### Clone and build Apollo
 
-Clone Apollo 7.0 . 
-Out of container open /apollo/cyber/setup.bash and change Cyber_ip to 172.17.0.1
+Clone Apollo : 
+
+```
+git clone https://github.com/ApolloAuto/apollo
 
 ```
 
+Out of container open /apollo/cyber/setup.bash and change Cyber_ip to 172.17.0.1
+
+```
 export CYBER_IP=172.17.0.1
 
 ```
@@ -44,6 +49,10 @@ Now in the apollo container, build apollo...
 ./apollo.sh build_gpu
 ```
 
+Add [https://gitlab.com/sdbcs-nio3/itl_mipt/planning/self-driving-car/carla_maps](Carla Maps) to Apollo.
+
+Start Apollo Dreamview and run the following modules: Routing, Planning, Third party perception, Prediction and Control.
+To monitor the planning and control process turn PNC monitor on.
 
 ## Usage
 
