@@ -1,6 +1,6 @@
 # Carla Apollo Bridge
 
-This python package provides a bridge for communicating between Apollo's Python API and Carla.  Besides the source code, a Dockerfile and scripts are provided for getting setup quickly and easily.  This package was tested with Carla version 0.9.13, and Apollo v7.0.0.
+This python package provides a bridge for communicating between Carla's Python API and Apollo.  Besides the source code, a Dockerfile and scripts are provided for getting setup quickly and easily.  This package was tested with Carla version 0.9.13, and Apollo v7.0.0.
 
 
 ## Installation
@@ -71,9 +71,9 @@ bash scripts/bootstrap.sh
 
 ```
 
-In Dreamview run the following modules: Routing, Planning, Third party perception, Prediction and Control.
+In Dreamview setup the mode to **Mkz Lgsvl** , the vehicle to **Lincoln2017MKZ LGSVL** and the map to the needed Carla Town, then run the following modules: **Routing, Planning, Third party perception, Prediction**.
 
-To monitor the planning and control process turn PNC monitor on.
+To monitor the planning and control process turn **PNC Monitor** on.
 
 #### Run Carla docker container 
 
@@ -153,7 +153,7 @@ python examples/manual_control_13.py --sync
 
 ```
 
-To enable control from apollo, in another terminal run:
+To enable control from apollo, turn on the **control module** in Apollo and in another terminal run:
 
 ```
 # run in carla-apollo-13 container in another terminal:
@@ -163,6 +163,20 @@ cd ~/carla_apollo_bridge_13
 python examples/apply_control.py
 
 ```
+
+To follow the trajectory planned by the Planning module in apollo without any control, in another terminal run:
+
+```
+# run in carla-apollo-13 container in another terminal:
+
+cd ~/carla_apollo_bridge_13
+
+python examples/apply_planning.py
+
+```
+
+You can either apply control commands from Apollo or apply the planned trajectory, not both.
+
 
 #### Interfacing with the simulation
 

@@ -59,31 +59,6 @@ from modules.planning.proto.planning_pb2 import ADCTrajectory
 # ------- Cyber Nodes ----------------------------------------------------------
 # ==============================================================================
 
-first_call = True
-old_theta = 0
-old_x = 0
-old_y = 0
-old_relative_time = 0
-
-def check_relative_position(x,y,theta,t):
-    global old_theta 
-    global old_x 
-    global old_y 
-    global old_relative_time
-
-    if theta >= 0 and theta < 1.571 :
-        if x > old_x and y > old_y:
-            return True
-    elif theta >= 1.571 and theta < 3.149 :
-        if y > old_y and x < old_x :
-            return True
-    elif theta < 0 and theta > -1.571 :
-        if x > old_x and y < old_y:
-            return True
-    elif theta <= -1.571 and theta > -3.149 :
-        if y < old_y and x < old_x : 
-            return True
-    return False
 
 class ApolloReader:
 
@@ -98,11 +73,6 @@ class ApolloReader:
 
 
     def planning_callback(self, msg):
-        global first_call 
-        global old_theta 
-        global old_x 
-        global old_y 
-        global old_relative_time 
         
         self.planned_trajectory = ADCTrajectory()
         self.planned_trajectory.CopyFrom(msg)
@@ -140,64 +110,7 @@ class ApolloReader:
         transf = carla.Transform(new_loc,new_rot)
         self.player.set_transform(transf)
 
-        """
-        counter = 0
-        for tp in self.planned_trajectory.trajectory_point:
-            #print(tp.relative_time)
-            current_point = tp.path_point
-            if first_call :
-                first_call = False
-                old_theta = current_point.theta
-                old_x = current_point.x
-                old_y = current_point.y
-                old_relative_time =  tp.relative_time
-            if  tp.relative_time > -0.01 and check_relative_position(current_point.x,current_point.y,current_point.theta, tp.relative_time) :
-                counter +=1
-                if counter < 2:
-                    #old_point = tp.path_point
-                    continue
-                else:
-                    
-                    #print ("current x : ",tp.path_point.x,"current y : ", -tp.path_point.y, "current z : ",tp.path_point.z)
-
-                    
-                    
-                    new_loc = carla.Location(x=current_point.x,y=-current_point.y,z=old_loc.z)
-                    new_rot = old_rot
-                    #print("yaw in carla: ", new_rot.yaw, " theta in apollo: ",current_point.theta)
-                    new_rot.yaw = - math.degrees(current_point.theta)
-                    transf = carla.Transform(new_loc,new_rot)
-                    self.player.set_transform(transf)
-
-                    first_call = False
-                    old_theta = current_point.theta
-                    old_x = current_point.x
-                    old_y = current_point.y
-                    old_relative_time =  tp.relative_time
-                    print("First trajectory call")
-                    break
         
-           # else:
-                if check_relative_position(current_point.x,current_point.y,current_point.theta, tp.relative_time):
-                    old_trans = self.player.get_transform()
-                    old_loc = old_trans.location
-                    old_rot = old_trans.rotation
-                    
-                    new_loc = carla.Location(x=current_point.x,y=-current_point.y,z=old_loc.z)
-                    new_rot = old_rot
-                    #print("yaw in carla: ", new_rot.yaw, " theta in apollo: ",current_point.theta)
-                    new_rot.yaw = - math.degrees(current_point.theta)
-                    transf = carla.Transform(new_loc,new_rot)
-                    self.player.set_transform(transf)
-
-                    #first_call = False
-                    old_theta = current_point.theta
-                    old_x = current_point.x
-                    old_y = current_point.y
-                    old_relative_time =  tp.relative_time
-                    break
-        """    
-        #print("old x , y , t : " , old_x," , ", old_y , " , ", old_relative_time)
        # print(self.planned_trajectory.trajectory_point[0])
 
 
