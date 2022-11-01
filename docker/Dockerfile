@@ -28,3 +28,15 @@ ENV DISPLAY=$DISPLAY
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib/nvidia"
 ENV  __NV_PRIME_RENDER_OFFLOAD=1
 ENV __GLX_VENDOR_LIBRARY_NAME=nvidia
+
+
+
+# add user and his password
+#ARG USER=docker_carla
+#ARG UID=1021
+#ARG GID=1021
+# default password
+#ARG PW=user
+#RUN useradd -m ${USER} --uid=${UID} && echo "${USER}:${PW}" | chpasswd && adduser ${USER} sudo
+#WORKDIR /home/${USER}
+#USER ${UID}:${GID}

@@ -205,9 +205,11 @@ class ApolloFeatures:
         heading = -math.radians(transform.rotation.yaw)
 
         localization_msg = LocalizationEstimate()
-        localization_msg.header.timestamp_sec = cyber_time.Time.now().to_sec()
+        
+        localization_msg.measurement_time = cyber_time.Time.now().to_sec()
         localization_msg.header.frame_id = 'localization'
         localization_msg.header.sequence_num = self.local_sequence_num
+        localization_msg.header.timestamp_sec = cyber_time.Time.now().to_sec()
 
         ####################### Carla transform.location to Apollo Pose ################################
         self.local_sequence_num += 1
@@ -226,7 +228,7 @@ class ApolloFeatures:
         pitch = -math.radians(transform.rotation.pitch)
         yaw = -math.radians(transform.rotation.yaw )
         yaw_for_orientation = -math.radians(transform.rotation.yaw + 90)  ## for testing  ## checked
-        
+        #print(yaw_for_orientation)
         quat = euler2quat(roll, pitch, yaw_for_orientation)  # w , x, y, z
         localization_msg.pose.orientation.qw = quat[0]
         localization_msg.pose.orientation.qx = quat[1]
@@ -237,18 +239,25 @@ class ApolloFeatures:
         #######################################################################################
         ####################### Carla transform.rotation to Euler angles #################
 
-        roll_apollo = transform.rotation.roll
-        pitch_apollo = -transform.rotation.pitch
-        yaw_apollo = -(transform.rotation.yaw +90 ) 
-        if roll_apollo < 0 : 
-            roll_apollo = 360 + roll_apollo     
-        if pitch_apollo < 0 : 
-            pitch_apollo = 360 + pitch_apollo     
-        if yaw_apollo < 0 : 
-            yaw_apollo = 360 + yaw_apollo     
-        localization_msg.pose.euler_angles.x = roll_apollo           ## for testing
-        localization_msg.pose.euler_angles.y = pitch_apollo         ## for testing
-        localization_msg.pose.euler_angles.z = yaw_apollo    ## for testing
+        #roll_apollo = transform.rotation.roll
+        #pitch_apollo = -transform.rotation.pitch
+        #yaw_apollo = -(transform.rotation.yaw +90 ) 
+        #if roll_apollo < 0 : 
+        #    roll_apollo = 360 + roll_apollo     
+        #if pitch_apollo < 0 : 
+         #   pitch_apollo = 360 + pitch_apollo     
+        #if yaw_apollo < 0 : 
+        #    yaw_apollo = 360 + yaw_apollo     
+        if yaw_for_orientation < 0 :
+           yaw_for_euler = 6.28318530718 + yaw_for_orientation
+        else:
+            yaw_for_euler = yaw_for_orientation
+
+        localization_msg.pose.euler_angles.x = 0 #roll_apollo           ## for testing
+        localization_msg.pose.euler_angles.y = 0 #pitch_apollo         ## for testing
+        
+
+        localization_msg.pose.euler_angles.z =  yaw_for_euler    ## for testing
 
 
 
@@ -310,12 +319,12 @@ class ApolloFeatures:
         localization_msg.pose.linear_velocity.z = linear_vel.z #tmp_array[2]
    
 
-        localization_msg.pose.angular_velocity_vrf.x =   math.radians(angular_vel.x)
-        localization_msg.pose.angular_velocity_vrf.y =  -math.radians(angular_vel.y)
-        localization_msg.pose.angular_velocity_vrf.z =  -math.radians(angular_vel.z)
-        localization_msg.pose.angular_velocity.x =   math.radians(angular_vel.x)
-        localization_msg.pose.angular_velocity.y =  -math.radians(angular_vel.y)
-        localization_msg.pose.angular_velocity.z =  -math.radians( angular_vel.z)
+        localization_msg.pose.angular_velocity_vrf.x = 0 #  math.radians(angular_vel.x)
+        localization_msg.pose.angular_velocity_vrf.y = 0 # -math.radians(angular_vel.y)
+        localization_msg.pose.angular_velocity_vrf.z = 0 # -math.radians(angular_vel.z)
+        localization_msg.pose.angular_velocity.x = 0 #  math.radians(angular_vel.x)
+        localization_msg.pose.angular_velocity.y = 0 # -math.radians(angular_vel.y)
+        localization_msg.pose.angular_velocity.z = 0 # -math.radians( angular_vel.z)
         #######################################################################################
 
 
@@ -326,13 +335,21 @@ class ApolloFeatures:
         #localization_msg.pose.linear_velocity.x = linear_vel.x
         #localization_msg.pose.linear_velocity.y = linear_vel.y
         #localization_msg.pose.linear_velocity.z = linear_vel.z
+        if accel.y > 2 : 
+            accel.y = 2
+        elif accel.y < -2:
+            accel.y = -2
+        if accel.x > 2 : 
+            accel.x = 2
+        elif accel.x < -2:
+            accel.x = -2
         linear_a_x =  accel.y   ## for testing- accel.y   ## for testing
         linear_a_y = accel.x   ## for testing- accel.x   ## for testing
         linear_a_z = accel.z  + 9.8   ## for testing
 
-        localization_msg.pose.linear_acceleration.x = linear_a_x        ## for testing  / it was accel.x
-        localization_msg.pose.linear_acceleration.y = linear_a_y       ## for testing  / it was -accel.y
-        localization_msg.pose.linear_acceleration.z = linear_a_z  ## for testing
+        localization_msg.pose.linear_acceleration.x = 0 # linear_a_x        ## for testing  / it was accel.x
+        localization_msg.pose.linear_acceleration.y = 0 # linear_a_y       ## for testing  / it was -accel.y
+        localization_msg.pose.linear_acceleration.z = 0 # linear_a_z  ## for testing
 
         ################ linear acceleration in vehicle coordination system in Apollo #################
 
@@ -352,14 +369,14 @@ class ApolloFeatures:
         ##                                                            v X
 
         r = R.from_euler('z', rotation_angle, degrees=True)
-        print("rotation angle: ",rotation_angle)
+        #print("rotation angle: ",rotation_angle)
         rot_mat = r.as_dcm()
-        print(rot_mat) # print rotation matrix
+        #print(rot_mat) # print rotation matrix
         rot_mat = r.inv().as_dcm()
         rotated_a = rot_mat.dot(np.array([linear_a_x, linear_a_y, linear_a_z]))
-        localization_msg.pose.linear_acceleration_vrf.x = rotated_a[0]
-        localization_msg.pose.linear_acceleration_vrf.y = rotated_a[1]
-        localization_msg.pose.linear_acceleration_vrf.z = rotated_a[2]       ## for testing
+        localization_msg.pose.linear_acceleration_vrf.x = 0 # rotated_a[0]
+        localization_msg.pose.linear_acceleration_vrf.y = 0 # rotated_a[1]
+        localization_msg.pose.linear_acceleration_vrf.z = 0 # rotated_a[2]       ## for testing
         localization_msg.pose.heading = heading
         #print("old x : ", x)
         #print("old y : ", y)
@@ -385,6 +402,13 @@ class ApolloFeatures:
         chassis_msg.steering_percentage = -1* c.steer * 100.0#*1.5#*2
         chassis_msg.parking_brake = c.hand_brake
         chassis_msg.driving_mode = Chassis.DrivingMode.COMPLETE_AUTO_DRIVE
+        if c.reverse :
+            chassis_msg.gear_location = Chassis.GearPosition.GEAR_REVERSE
+            #print("gear reverse")
+        else :
+            chassis_msg.gear_location = Chassis.GearPosition.GEAR_DRIVE
+            #print("gear drive")
+
 
         self.chassis_writer.write(chassis_msg)
 
@@ -437,6 +461,22 @@ class ApolloFeatures:
                         obstacles.perception_obstacle.append(msg)
         self.bridge.write_cyber_message(self.channel_name, obstacles)
         """  
+
+# ==============================================================================
+# ---- Spawn obstacles ---------------------------------------------------------
+# ==============================================================================
+
+def add_obstacle (world):
+    obs_blueprint = world.get_blueprint_library().find('vehicle.citroen.c3')
+    spawn_point = carla.Transform(carla.Location(x=192,y=185, z=0.3), carla.Rotation(yaw= 90))
+    obstacle = world.try_spawn_actor(obs_blueprint, spawn_point)
+
+    #vehicles = world.get_actors().filter('vehicle.citroen.c3')
+    #obs1 = vehicles[0]
+    #box = obs1.bounding_box
+    #print(box.location)         # Location relative to the vehicle.
+    #print(box.extent)           # XYZ half-box extents in meters.
+    return obstacle
 
 
 # ==============================================================================
@@ -1135,12 +1175,14 @@ class KeyboardControl(object):
 
     def _parse_vehicle_keys(self, keys, milliseconds):
         if keys[K_UP] or keys[K_w]:
-            self._control.throttle = min(self._control.throttle + 0.01, 1.00)
+            self._control.throttle = 1.0 # 0.55 #min(self._control.throttle + 0.01, 1.00)
         else:
-            self._control.throttle = 0.0
-
+            self._control.throttle = max(self._control.throttle - 0.04, 0)#0 # max(self._control.throttle - 0.01, 0.30)
+            
         if keys[K_DOWN] or keys[K_s]:
-            self._control.brake = min(self._control.brake + 0.2, 1)
+            self._control.brake = 0.9 #1.0 #0.1 # min(self._control.brake + 0.2, 1)
+            if self._control.throttle == 0 :
+                self._control.throttle = 0.1
         else:
             self._control.brake = 0
 
@@ -1899,6 +1941,8 @@ def game_loop(args):
         
         vehicles = sim_world.get_actors().filter('vehicle.lincoln.mkz*')
         ego = vehicles[0]
+        #ego.set_enable_gravity(True)
+        #ego.set_simulate_physics(True)
         if len(vehicles) > 1 :
             print("Warning: more than one vehicle in the scene.") 
 
@@ -1908,10 +1952,43 @@ def game_loop(args):
         sens_manager = SensorManager(sim_world, display_manager, 'LiDAR', carla.Transform(carla.Location(x=0, z=2.4)), ego, {'range': '10000'} ,[1, 1],apollo_test)
         for ac in sim_world.get_actors():
             print("actor: ", ac)
+
+        
+        obs1 = add_obstacle(sim_world)
         while True:
 
-            #display_manager.render()
+            #carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0))
+            old_loc = ego.get_location()
+            loc = carla.Location(x=old_loc.x+0.01,y=old_loc.y,z=old_loc.z)
 
+            old_trans = ego.get_transform()
+            old_rot = old_trans.rotation
+            new_rot = old_rot
+            new_rot.yaw += 0.6
+            transf = carla.Transform(old_loc,new_rot)
+            #display_manager.render()
+            ######ego.set_location(loc)
+            #ego.set_transform(transf)
+
+            """
+            velocity_in_car_coord = np.array([1,0,0,1])
+            Inverse_transform =  np.array(old_trans.get_inverse_matrix())
+            tran =  np.array(old_trans.get_matrix())
+            velocity_in_world = np.dot(tran, velocity_in_car_coord)
+            """
+
+            heading_in_degrees = -1* old_rot.yaw
+            if heading_in_degrees < 0 :
+                heading_in_degrees += 360
+            rotation_angle = heading_in_degrees - 90   
+
+            r = R.from_euler('z', rotation_angle, degrees=True)
+            rot_mat = r.as_dcm()
+            #print(rot_mat) # print rotation matrix
+            rot_mat = r.inv().as_dcm()
+            velocity_in_world = rot_mat.dot(np.array([0, -1, 0]))
+            #print("velocity: ", velocity_in_world[0]," ", velocity_in_world[1]," ",velocity_in_world[2])
+            #ego.set_target_velocity(carla.Vector3D(x=velocity_in_world[0],y=velocity_in_world[1],z=velocity_in_world[2]))
             if args.sync:
                 sim_world.tick()
                 if not cyber.is_shutdown():
