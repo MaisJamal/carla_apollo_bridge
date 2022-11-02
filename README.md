@@ -42,6 +42,25 @@ export CYBER_IP=172.17.0.1
 
 ```
 
+Add the following code lines to the file **apollo/modules/planning/tasks/deciders/speed\_bounds\_decider/speed\_limit\_decider.cc** after defining speed\_limit\_from\_reference\_line :
+
+```
+
+// (1) speed limit from map
+
+double speed_limit_from_reference_line = reference_line_.GetSpeedLimitFromS(reference_line_s);
+
+/************** added as a temproraly solution *********************/
+/****** for speed_limit_from_reference_line = 0 in Carla Towns *****/
+
+if (speed_limit_from_reference_line == 0) {
+
+	speed_limit_from_reference_line = 11.176 ;
+}
+
+/*******************************************************************/
+     
+```
 Now in the apollo container, build apollo...
 ```
 # run in apollo_dev_user container:
@@ -49,7 +68,7 @@ Now in the apollo container, build apollo...
 ./apollo.sh build_gpu
 ```
 
-Add [Carla Maps](https://gitlab.com/sdbcs-nio3/itl_mipt/planning/self-driving-car/carla_maps) to Apollo.
+Add [Carla Maps](https://github.com/MaisJamal/Carla_Towns-Apollo_maps) to Apollo.
 
 
 
