@@ -164,38 +164,33 @@ python util/config.py -m Town03 --host 172.17.0.1
 Run these commands inside the carla-apollo-13 container
 
 ```
-# run in carla-apollo-13 container:
+# run in carla-apollo-13 container, start Carla scenario:
 
 cd ~/carla_apollo_bridge_13
 
-python examples/manual_control_13.py --sync
+python examples/manual_control_13.py 
 
 ```
 
-To enable control from apollo, turn on the **control module** in Apollo and in another terminal run:
+Before starting the bridge set the configurations in config/bridge\_settings.yaml. To enable the control from apollo, turn on the **control module** in Apollo and in the settings file set apply\_control to true , otherwise the ego vehicle in Carla will follow the planned trajectory without applying control.
 
 ```
-# run in carla-apollo-13 container in another terminal:
+# in config/bridge_settings.yaml: 
+
+apply_control : true
+
+```
+
+Run the bridge:
+
+```
+# run in carla-apollo-13 container, start carla-apollo bridge:
 
 cd ~/carla_apollo_bridge_13
 
-python examples/apply_control.py
+python carla_cyber_bridge/run_bridge.py
 
 ```
-
-To follow the trajectory planned by the Planning module in apollo without any control, in another terminal run:
-
-```
-# run in carla-apollo-13 container in another terminal:
-
-cd ~/carla_apollo_bridge_13
-
-python examples/apply_planning.py
-
-```
-
-You can either apply control commands from Apollo or apply the planned trajectory, not both.
-
 
 #### Interfacing with the simulation
 

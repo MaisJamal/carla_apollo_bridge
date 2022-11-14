@@ -161,8 +161,9 @@ from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle,
 
 #from transforms3d.euler import euler2mat, quat2euler, euler2quat
 from carla_common.euler import euler2mat, quat2euler, euler2quat
-import carla_common.transforms as trans
+
 from scipy.spatial.transform import Rotation as R
+
 
 # ==============================================================================
 # ------- Cyber Nodes ----------------------------------------------------------
@@ -176,7 +177,7 @@ class ApolloFeatures:
 
     def __init__(self):
         cyber.init()
-        self.node = cyber.Node("carla_node_mais")
+        self.node = cyber.Node("carla_writer_node")
         self.local_sequence_num = 1
         self.chassis_sequence_num = 1
         self.lidar_sequence_num = 1
@@ -195,6 +196,7 @@ class ApolloFeatures:
         #self.location_reader = self.reader_node.create_reader('/apollo/control', ControlCommand, control_callback)
 
     def send_localization_msg(self,carla_actor_player):
+        global current_speed
         #clock_msg = Clock()
         #clock_msg.clock = cyber_time.Time.now()
         #self.clock_writer.write(clock_msg)
@@ -390,7 +392,8 @@ class ApolloFeatures:
         v = carla_actor_player.get_velocity()
         c = carla_actor_player.get_control()
         speed_abs = math.sqrt(v.x**2 + v.y**2 + v.z**2)   # in m/s
-        #print("velocity of vehicle:" , v)
+        #speed_abs = 10
+        #print("velocity of vehicle:" , speed_abs)
         chassis_msg = Chassis()
         chassis_msg.header.timestamp_sec = cyber_time.Time.now().to_sec()
         chassis_msg.header.sequence_num = self.chassis_sequence_num
@@ -1950,11 +1953,12 @@ def game_loop(args):
         display_manager = DisplayManager(grid_size=[2, 2], window_size=[100, 100])
 
         sens_manager = SensorManager(sim_world, display_manager, 'LiDAR', carla.Transform(carla.Location(x=0, z=2.4)), ego, {'range': '10000'} ,[1, 1],apollo_test)
+        
         for ac in sim_world.get_actors():
             print("actor: ", ac)
 
         
-        obs1 = add_obstacle(sim_world)
+        #obs1 = add_obstacle(sim_world)
         while True:
 
             #carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0))
@@ -1991,10 +1995,10 @@ def game_loop(args):
             #ego.set_target_velocity(carla.Vector3D(x=velocity_in_world[0],y=velocity_in_world[1],z=velocity_in_world[2]))
             if args.sync:
                 sim_world.tick()
-                if not cyber.is_shutdown():
-                    apollo_test.send_localization_msg(ego)
-                    apollo_test.send_chassis_msg(ego)
-                    apollo_test.send_obstacles_msg(ego,sim_world)
+            #if not cyber.is_shutdown():
+                #apollo_test.send_localization_msg(ego)
+                #apollo_test.send_chassis_msg(ego)
+             #   apollo_test.send_obstacles_msg(ego,sim_world)
             clock.tick_busy_loop(60)
             if controller.parse_events(client, world, clock, args.sync):
                 return
