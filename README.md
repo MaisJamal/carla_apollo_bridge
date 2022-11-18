@@ -164,7 +164,7 @@ python util/config.py -m Town03 --host 172.17.0.1
 Run these commands inside the carla-apollo-13 container
 
 ```
-# run in carla-apollo-13 container, start Carla scenario:
+# run in carla-apollo-13 container, start Carla example scenario:
 
 cd ~/carla_apollo_bridge_13
 

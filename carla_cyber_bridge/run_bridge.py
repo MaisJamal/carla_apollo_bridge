@@ -23,13 +23,38 @@ from modules.drivers.gnss.proto.imu_pb2 import Imu
 from modules.localization.proto.gps_pb2 import Gps
 from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle, PerceptionObstacles
 from modules.planning.proto.planning_pb2 import ADCTrajectory
+#from planning_proto.planning import ADCTrajectory
+
 # ==============================================================================
 # -- global variables ----------------------------------------------------------
 # ==============================================================================
 
 
+class Scenarios:    # scenario_type in proto in apollo v7.0.0 has modifications of the one in apollo v5.0.0
+    LANE_FOLLOW = 0  
+    BARE_INTERSECTION_UNPROTECTED = 2
+    STOP_SIGN_PROTECTED = 3
+    STOP_SIGN_UNPROTECTED = 4
+    TRAFFIC_LIGHT_PROTECTED = 5
+    TRAFFIC_LIGHT_UNPROTECTED_LEFT_TURN = 6
+    TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN = 7
+    YIELD_SIGN = 8
 
+    PULL_OVER = 9
+    VALET_PARKING = 10
 
+    EMERGENCY_PULL_OVER = 11
+    EMERGENCY_STOP = 1
+
+    NARROW_STREET_U_TURN = 13
+    PARK_AND_GO = 14
+
+    LEARNING_MODEL_SAMPLE = 15
+    DEADEND_TURNAROUND = 16
+
+class Stage:
+    VALET_PARKING_APPROACHING_PARKING_SPOT = 700
+    VALET_PARKING_PARKING = 0
 
 # ==============================================================================
 # -- Apollo Node ---------------------------------------------------------------
@@ -47,10 +72,15 @@ class ApolloNode:
         self.msg_seq_counter = 0
         self.ego_speed = 0
         self.planning_flag = 0
-
+        self.time = time.time()
         self.planned_trajectory = None
         self.last_trajectory = None
         self.flag_planning_failed = False
+        
+        first_trans = self.player.get_transform()
+        self.last_x = first_trans.location.x
+        self.last_y = - first_trans.location.y
+        self.last_theta = - math.radians(first_trans.rotation.yaw)
 
         if self.params['publish_localization_chassis_msgs']:
             self.location_writer = self.node.create_writer(params['localization_channel'], LocalizationEstimate)
@@ -76,33 +106,46 @@ class ApolloNode:
     
     def planning_callback(self,msg):
         t1 = time.time()
+       # print("time from last callback: ", t1-self.time)
+        self.time = t1
         self.planned_trajectory = ADCTrajectory()
         self.planned_trajectory.CopyFrom(msg)
-        ff = 5
+        
+        
+        #print("sc type ",self.planned_trajectory.debug.planning_data.scenario.scenario_type)
+        #print("stage type ",self.planned_trajectory.debug.planning_data.scenario.stage_type)
+        #print("scenario ",self.planned_trajectory.debug.planning_data.scenario)
+        is_in_parking = False
+        if self.planned_trajectory.debug.planning_data.scenario.scenario_type == Scenarios.VALET_PARKING :#and self.planned_trajectory.debug.planning_data.scenario.stage_type == Stage.VALET_PARKING_PARKING:  
+            print("scenario is valet parking ......")
+            is_in_parking = True
+
+        if not is_in_parking:
+            ff = 5
+        else:
+            ff = 1 
+        #print("ff is ",ff)
         self.player.set_simulate_physics(True)
-        temp_empty = False
-        temp_stop = False
-        temp_plan = False
+
         if len(self.planned_trajectory.trajectory_point)<1:
             if not self.last_trajectory :
                 print("Received trajectory is empty.")
-            else:
+            elif not is_in_parking:
                 #print("Suddenly received trajectory is empty.")
                 self.flag_planning_failed = True
-                planning_needed = True
                 old_trans = self.player.get_transform()
                 old_loc = old_trans.location
                 old_rot = old_trans.rotation
 
-                dx_nearest_to_vehicle = self.last_trajectory.trajectory_point[0].path_point.x - old_loc.x 
-                dy_nearest_to_vehicle = self.last_trajectory.trajectory_point[0].path_point.y - (-old_loc.y)
+                dx_nearest_to_vehicle = self.last_trajectory.trajectory_point[0].path_point.x - self.last_x
+                dy_nearest_to_vehicle = self.last_trajectory.trajectory_point[0].path_point.y - self.last_y
                 nearest_dist = math.sqrt(dx_nearest_to_vehicle * dx_nearest_to_vehicle + dy_nearest_to_vehicle * dy_nearest_to_vehicle)
                 nearest_idx = 0
 
                 i=0
                 for tp in self.last_trajectory.trajectory_point:
-                    dx_current_to_vehicle = self.last_trajectory.trajectory_point[i].path_point.x - old_loc.x 
-                    dy_current_to_vehicle = self.last_trajectory.trajectory_point[i].path_point.y - (-old_loc.y)
+                    dx_current_to_vehicle = self.last_trajectory.trajectory_point[i].path_point.x - self.last_x 
+                    dy_current_to_vehicle = self.last_trajectory.trajectory_point[i].path_point.y - self.last_y
                     current_dist_to_vehicle = math.sqrt(dx_current_to_vehicle * dx_current_to_vehicle 
                                         + dy_current_to_vehicle * dy_current_to_vehicle)
                     if current_dist_to_vehicle < nearest_dist :
@@ -110,21 +153,24 @@ class ApolloNode:
                         nearest_idx = i
                 
                     i+=1
-                if nearest_idx +ff == i: #last point 
-                    nearest_point = self.last_trajectory.trajectory_point[nearest_idx].path_point
-                    self.ego_speed = self.last_trajectory.trajectory_point[nearest_idx].v
-                else:
-                    nearest_point = self.last_trajectory.trajectory_point[nearest_idx+ff].path_point
-                    self.ego_speed = self.last_trajectory.trajectory_point[nearest_idx+ff].v
-                self.ego_speed = self.last_trajectory.trajectory_point[nearest_idx].v
-                #print("v ",self.ego_speed) 
-                new_loc = carla.Location(x=nearest_point.x,y=-nearest_point.y,z=old_loc.z)
+                
+                nearest_point = self.last_trajectory.trajectory_point[min(nearest_idx+ff,i-1)].path_point
+                self.ego_speed = self.last_trajectory.trajectory_point[min(nearest_idx+ff,i-1)].v
+                shift = 1.355
+                heading = nearest_point.theta
+                shifted_x = nearest_point.x + shift * math.cos(heading)
+                shifted_y = - (nearest_point.y + shift * math.sin(heading))
+            
+                new_loc = carla.Location(x=shifted_x,y=shifted_y,z=old_loc.z)
                 new_rot = old_rot
                 new_rot.yaw = - math.degrees(nearest_point.theta)
                 transf_end = carla.Transform(new_loc,new_rot)
-                #self.player.set_target_velocity(carla.Vector3D(x=8,y=0,z=0))
+
                 self.player.set_transform(transf_end)
-                #self.send_chassis_msg(speed)
+
+                self.last_x = nearest_point.x
+                self.last_y = nearest_point.y
+                self.last_theta = nearest_point.theta
                 
 
         else:
@@ -132,50 +178,53 @@ class ApolloNode:
             old_loc = old_trans.location
             old_rot = old_trans.rotation
             
-            #print("current point x : ",old_loc.x , " , y :" , old_loc.y , " , yaw: ", old_rot.yaw)
             
-            dx_nearest_to_vehicle = self.planned_trajectory.trajectory_point[0].path_point.x - old_loc.x 
-            dy_nearest_to_vehicle = self.planned_trajectory.trajectory_point[0].path_point.y - (-old_loc.y)
+            dx_nearest_to_vehicle = self.planned_trajectory.trajectory_point[0].path_point.x - self.last_x 
+            dy_nearest_to_vehicle = self.planned_trajectory.trajectory_point[0].path_point.y - self.last_y
             nearest_dist = math.sqrt(dx_nearest_to_vehicle * dx_nearest_to_vehicle + dy_nearest_to_vehicle * dy_nearest_to_vehicle)
             nearest_idx = 0
 
             i=0
             tt1 = time.time()
             for tp in self.planned_trajectory.trajectory_point:
-                dx_current_to_vehicle = self.planned_trajectory.trajectory_point[i].path_point.x - old_loc.x 
-                dy_current_to_vehicle = self.planned_trajectory.trajectory_point[i].path_point.y - (-old_loc.y)
+                dx_current_to_vehicle = self.planned_trajectory.trajectory_point[i].path_point.x - self.last_x
+                dy_current_to_vehicle = self.planned_trajectory.trajectory_point[i].path_point.y - self.last_y
                 current_dist_to_vehicle = math.sqrt(dx_current_to_vehicle * dx_current_to_vehicle 
                                     + dy_current_to_vehicle * dy_current_to_vehicle)
                 if current_dist_to_vehicle < nearest_dist :
                     nearest_dist = current_dist_to_vehicle
                     nearest_idx = i
-                #print("i: ", i , " v: ",self.planned_trajectory.trajectory_point[i].v," t: ", self.planned_trajectory.trajectory_point[i].relative_time)
+                #print("i: ", i , " x: ",self.planned_trajectory.trajectory_point[i].path_point.x," y: ", self.planned_trajectory.trajectory_point[i].path_point.y)
                 i+=1
-            #print(time.time()-tt1)
-            #print("nearest index: ",nearest_idx," of total : ", i)
-            curr_nearest_point = self.planned_trajectory.trajectory_point[nearest_idx].path_point
-            if nearest_idx +ff == i: #last point 
-                nearest_point = curr_nearest_point
-                self.ego_speed = self.planned_trajectory.trajectory_point[nearest_idx].v 
-            else:
-                nearest_point = self.planned_trajectory.trajectory_point[nearest_idx+ff].path_point
-                self.ego_speed = self.planned_trajectory.trajectory_point[nearest_idx+ff].v 
             
-            #print("v ",self.ego_speed)
-            #print("nearest curr point x : ",curr_nearest_point.x , " , y :" , -curr_nearest_point.y , " , yaw: ", - math.degrees(curr_nearest_point.theta))
-            #print("next point x : ",nearest_point.x , " , y :" , -nearest_point.y , " , yaw: ", - math.degrees(nearest_point.theta))
-            #print("old z ", old_loc.z)
-            new_loc = carla.Location(x=nearest_point.x,y=-nearest_point.y,z=old_loc.z)
+            
+            nearest_point = self.planned_trajectory.trajectory_point[min(nearest_idx+ff,i-1)].path_point
+            self.ego_speed = self.planned_trajectory.trajectory_point[min(nearest_idx+ff,i-1)].v
+            
+
+            shift = 1.355
+            heading = nearest_point.theta
+            shifted_x = nearest_point.x + shift * math.cos(heading)
+            shifted_y = - (nearest_point.y + shift * math.sin(heading))
+            #print("shifted x: ",shifted_x," , shifted y : ",shifted_y)
+
+            new_loc = carla.Location(x=shifted_x,y=shifted_y,z=old_loc.z)
             new_rot = old_rot
-            #print("yaw in carla: ", new_rot.yaw, " theta in apollo: ",current_point.theta)
             new_rot.yaw = - math.degrees(nearest_point.theta)
+
             transf_end = carla.Transform(new_loc,new_rot)
-            self.player.set_transform(transf_end)
-            #speed = self.planned_trajectory.trajectory_point[nearest_idx+1].v
+
+            if not is_in_parking or nearest_dist<0.6: 
+                self.player.set_transform(transf_end)
+            
+                self.last_x = nearest_point.x
+                self.last_y = nearest_point.y
+                self.last_theta = nearest_point.theta
             
             
-            self.last_trajectory = ADCTrajectory()
-            self.last_trajectory.CopyFrom(self.planned_trajectory)
+                self.last_trajectory = ADCTrajectory()
+                self.last_trajectory.CopyFrom(self.planned_trajectory)
+            
         
         #print((time.time()-self.time)*1000)
         #self.time = time.time()
