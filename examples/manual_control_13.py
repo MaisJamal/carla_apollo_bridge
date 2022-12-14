@@ -469,19 +469,35 @@ class ApolloFeatures:
 # ---- Spawn obstacles ---------------------------------------------------------
 # ==============================================================================
 
-def add_obstacle (world):
+
+def add_obstacle (player,world):
+    transform = player.get_transform()
+    x_player = transform.location.x
+    y_player = transform.location.y
+    yaw_player = transform.rotation.yaw
+    heading = math.radians(yaw_player)
+    print("yaw:",yaw_player)
+    x_obstacle = x_player + 10 * math.cos(heading)
+    y_obstacle = y_player + 10 * math.sin(heading)
     obs_blueprint = world.get_blueprint_library().find('vehicle.citroen.c3')
-    spawn_point = carla.Transform(carla.Location(x=192,y=185, z=0.3), carla.Rotation(yaw= 90))
+    spawn_point = carla.Transform(carla.Location(x=x_obstacle,y=y_obstacle, z=0.3), carla.Rotation(yaw= yaw_player))
     obstacle = world.try_spawn_actor(obs_blueprint, spawn_point)
 
-    #vehicles = world.get_actors().filter('vehicle.citroen.c3')
-    #obs1 = vehicles[0]
-    #box = obs1.bounding_box
-    #print(box.location)         # Location relative to the vehicle.
-    #print(box.extent)           # XYZ half-box extents in meters.
     return obstacle
 
+def update_obstacle (obstacle):
+    transform = obstacle.get_transform()
+    x_obs = transform.location.x
+    y_obs = transform.location.y
+    z_obs = transform.location.z
+    yaw_obs = transform.rotation.yaw
+    heading = math.radians(yaw_obs)
+    x_obstacle = x_obs + 0.06 * math.cos(heading)
+    y_obstacle = y_obs + 0.06 * math.sin(heading)
+    new_trans = carla.Transform(carla.Location(x=x_obstacle,y=y_obstacle, z=z_obs), carla.Rotation(yaw= yaw_obs))
+    obstacle.set_transform(new_trans)
 
+    return obstacle
 # ==============================================================================
 # ---- Display Manager ----------------------------------------------------------
 # ==============================================================================
@@ -884,6 +900,7 @@ class World(object):
                 sys.exit(1)
             spawn_points = self.map.get_spawn_points()
             spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            print("spawn_points num:",len(spawn_points))
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
             self.show_vehicle_telemetry = False
             self.modify_vehicle_physics(self.player)
@@ -968,6 +985,11 @@ class World(object):
                 sensor.destroy()
         if self.player is not None:
             self.player.destroy()
+        for actor in self.world.get_actors():
+            if isinstance(actor, carla.Vehicle) and actor.attributes.get('role_name') != 'hero':
+                actor.destroy() 
+            elif isinstance(actor, carla.Walker):
+                actor.destroy() 
 
 
 # ==============================================================================
@@ -1958,7 +1980,7 @@ def game_loop(args):
             print("actor: ", ac)
 
         
-        #obs1 = add_obstacle(sim_world)
+        obs1 = add_obstacle(ego,sim_world)
         while True:
 
             #carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0))
@@ -1973,7 +1995,7 @@ def game_loop(args):
             #display_manager.render()
             ######ego.set_location(loc)
             #ego.set_transform(transf)
-
+            update_obstacle(obs1)
             """
             velocity_in_car_coord = np.array([1,0,0,1])
             Inverse_transform =  np.array(old_trans.get_inverse_matrix())

@@ -9,9 +9,10 @@ import carla
 import math
 import time
 
+
 from cyber_py import cyber, cyber_time , cyber_timer
 
-from msg_getters import get_chassis_msg ,get_localization_msg
+from msg_getters import get_chassis_msg ,get_localization_msg , get_obstacles_msg ,get_camera_msg
 
 from modules.localization.proto.localization_pb2 import LocalizationEstimate
 from modules.canbus.proto.chassis_pb2 import Chassis
@@ -23,7 +24,7 @@ from modules.drivers.gnss.proto.imu_pb2 import Imu
 from modules.localization.proto.gps_pb2 import Gps
 from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle, PerceptionObstacles
 from modules.planning.proto.planning_pb2 import ADCTrajectory
-#from planning_proto.planning import ADCTrajectory
+from modules.drivers.proto.sensor_image_pb2 import CompressedImage
 
 # ==============================================================================
 # -- global variables ----------------------------------------------------------
@@ -56,6 +57,8 @@ class Stage:
     VALET_PARKING_APPROACHING_PARKING_SPOT = 700
     VALET_PARKING_PARKING = 0
 
+
+
 # ==============================================================================
 # -- Apollo Node ---------------------------------------------------------------
 # ==============================================================================
@@ -63,10 +66,11 @@ class Stage:
 
 class ApolloNode:
 
-    def __init__(self,world,player,params):
+    def __init__(self,world,player,sensors,params):
         cyber.init()
         self.sim_world = world
         self.player = player
+        self.sensors = sensors
         self.node = cyber.Node("bridge_node")
         self.params = params
         self.msg_seq_counter = 0
@@ -75,16 +79,25 @@ class ApolloNode:
         self.time = time.time()
         self.planned_trajectory = None
         self.last_trajectory = None
-        self.flag_planning_failed = False
         
         first_trans = self.player.get_transform()
         self.last_x = first_trans.location.x
         self.last_y = - first_trans.location.y
         self.last_theta = - math.radians(first_trans.rotation.yaw)
+        self.last_image = None
+
+        
 
         if self.params['publish_localization_chassis_msgs']:
             self.location_writer = self.node.create_writer(params['localization_channel'], LocalizationEstimate)
             self.chassis_writer = self.node.create_writer(params['chassis_channel'], Chassis)
+        
+        if self.params['publish_camera_msg']:
+            self.camera_writer = self.node.create_writer(params['camera_channel'] , CompressedImage)
+
+        if self.params['publish_obstacles_ground_truth']:
+            self.obstacles_writer = self.node.create_writer(params['perception_channel'] , PerceptionObstacles)
+        
         if params['apply_control']:
             self.reader = self.node.create_reader(params['control_channel'], ControlCommand, self.control_callback)
         else:
@@ -101,7 +114,18 @@ class ApolloNode:
             localization_msg = get_localization_msg(self.player)
             localization_msg.header.sequence_num = self.msg_seq_counter
             self.location_writer.write(localization_msg)
+
+        if self.params['publish_camera_msg']:
+            camera_msg = get_camera_msg(self.last_image)
+            camera_msg.header.sequence_num = self.msg_seq_counter
+            #camera_msg.measurement_time
+            self.camera_writer.write(camera_msg) 
         
+        if self.params['publish_obstacles_ground_truth']:
+            obstacles = get_obstacles_msg(self.sim_world,self.player)
+            obstacles.header.sequence_num = self.msg_seq_counter
+            self.obstacles_writer.write(obstacles)
+
         self.msg_seq_counter += 1
     
     def planning_callback(self,msg):
@@ -132,7 +156,6 @@ class ApolloNode:
                 print("Received trajectory is empty.")
             elif not is_in_parking:
                 #print("Suddenly received trajectory is empty.")
-                self.flag_planning_failed = True
                 old_trans = self.player.get_transform()
                 old_loc = old_trans.location
                 old_rot = old_trans.rotation
@@ -252,6 +275,11 @@ class ApolloNode:
         vehicle_control.gear = 1 if vehicle_control.reverse else -1
 
         self.player.apply_control(vehicle_control)
+
+
+    def camera_callback(self,image):
+        image.convert(carla.ColorConverter.Raw)
+        self.last_image = image
 # ==============================================================================
 # -- main() --------------------------------------------------------------------
 # ==============================================================================
@@ -265,18 +293,29 @@ def main():
     host = carla_params['host']
     port = carla_params['port']
 
-    # initialize new Carla client
+    ########### initialize new Carla client ##########
     carla_client = carla.Client(host=host, port=port)
     carla_client.set_timeout(2000)
     carla_world = carla_client.get_world()
     carla_map = carla_world.get_map()
-    carla_player = carla_world.get_actors().filter('vehicle.lincoln.mkz*')[0]
 
+    for actor in carla_world.get_actors():
+        if actor.attributes.get('role_name') == 'hero':
+            carla_player = actor
+    #carla_player = carla_world.get_actors().filter('vehicle.lincoln.mkz*')[0]
+
+    ########### get sensor actors ##########
+    sensors = {}
+    camera = carla_world.get_actors().filter('sensor.camera.rgb')[0]
+    if camera:
+        sensors['camera'] = camera
 
     publishing_rate = params['publishing_rate']
     
-    apollo_node = ApolloNode(world=carla_world,player=carla_player,params=params)
-    
+    apollo_node = ApolloNode(world=carla_world,player=carla_player,sensors = sensors,params=params)
+    ###############################
+    camera.listen(apollo_node.camera_callback)
+    ######################################
     ct = cyber_timer.Timer(1000/publishing_rate, apollo_node.publish_data, 0)  # 10ms
     ct.start()
     

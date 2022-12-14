@@ -9,7 +9,7 @@ import carla
 
 import numpy as np
 import math
-
+import cv2
 
 from cyber_py import cyber, cyber_time
 from modules.localization.proto.localization_pb2 import LocalizationEstimate
@@ -21,9 +21,26 @@ from modules.localization.proto.imu_pb2 import CorrectedImu
 from modules.drivers.gnss.proto.imu_pb2 import Imu
 from modules.localization.proto.gps_pb2 import Gps
 from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle, PerceptionObstacles
+from modules.drivers.proto.sensor_image_pb2 import CompressedImage
 
 from carla_common.euler import euler2mat, quat2euler, euler2quat
 from scipy.spatial.transform import Rotation as R
+
+
+
+# ==============================================================================
+# -- global variables ----------------------------------------------------------
+# ==============================================================================
+
+
+class Type:    # obstacle type in proto in apollo v7.0.0 has modifications of the one in apollo v5.0.0
+    UNKNOWN = 0
+    UNKNOWN_MOVABLE = 1
+    UNKNOWN_UNMOVABLE = 2
+    PEDESTRIAN = 3   # Pedestrian, usually determined by moving behavior.
+    BICYCLE = 4      # bike, motor bike
+    VEHICLE = 5      # Passenger car or truck.
+
 
 
 # ==============================================================================
@@ -223,38 +240,76 @@ def get_chassis_msg(carla_actor_player,planning_flag,speed):
 # ==============================================================================
 
 
-def send_obstacles_msg(self,carla_actor_player,world) : 
-        obstacles = PerceptionObstacles()
-        obstacles.header.timestamp_sec = cyber_time.Time.now().to_sec()
-        obstacles.header.sequence_num = self.obstacles_sequence_num
-        self.obstacles_sequence_num += 1
-        vehicles_num = 0
-        walkers_num = 0
-        for actor in world.get_actors():
-            #print("actor: ",actor[0])
+def get_obstacles_msg(world,player) : 
+    other_vehicles_num = 0
+    walkers_num = 0
+    hero_num = 0
+    pedestrians = []
+    all_obstacles = []
+    #print("actors: ",world.get_actors)
+
+    for actor in world.get_actors():
+        #print("act ",actor)
+        if actor.attributes.get('role_name') == 'hero':
+            hero_num += 1
+        if isinstance(actor, carla.Vehicle) and actor.attributes.get('role_name') != 'hero':
+            other_vehicles_num +=1
+            all_obstacles.append(actor)
             
-            #if actor.carla_actor.get_location().distance(self.parent_actor.get_location()) <= self.range:
-            if isinstance(actor, carla.Vehicle) and actor != carla_actor_player:
-                vehicles_num +=1
-            elif isinstance(actor, carla.Walker):
-                walkers_num +=1
-                
-        #print("walkers: ", walkers_num)
-        #print("vehicles: ", vehicles_num)        
-        #for actor in self.bridge.child_actors.values():
-        """
+        elif isinstance(actor, carla.Walker):
+            walkers_num +=1
+            pedestrians.append(actor)
+            all_obstacles.append(actor)
+
+    print("hereos: ",hero_num)      
+    print("walkers: ", walkers_num)
+    print("obstacle vehicles: ", other_vehicles_num)        
+
+    obstacles = PerceptionObstacles()
+    obstacles.header.timestamp_sec = cyber_time.Time.now().to_sec()
+    obstacles.header.module_name = 'perception_obstacle'
+    for obs in all_obstacles:
+        #print("car id ",car.id)
+        obs_transform = obs.get_transform()
+        obs_velocity = obs.get_velocity()
+        box = obs.bounding_box
+        #print(box.location)         # Location relative to the vehicle.
+        #print(box.extent) 
         
-        obstacles.header.CopyFrom(self.bridge.get_cyber_header())
-        for actor in self.bridge.child_actors.values():
-            if actor.carla_actor is not self.parent_actor:
-                print ("actor in object sensore: ", actor.carla_actor)
-                print("actor: ", self.get_actor_display_name(actor.carla_actor))
-                if actor.carla_actor.get_location().distance(self.parent_actor.get_location()) <= self.range:
-                    if isinstance(actor.carla_actor, carla.Vehicle):
-                        obstacles.perception_obstacle.append(actor.get_cyber_obstacle_msg())
-                    elif isinstance(actor.carla_actor, carla.Walker):
-                        msg = actor.get_cyber_obstacle_msg()
-                        msg.type = PerceptionObstacle.Type.PEDESTRIAN
-                        obstacles.perception_obstacle.append(msg)
-        self.bridge.write_cyber_message(self.channel_name, obstacles)
-        """  
+        obstacle = obstacles.perception_obstacle.add()
+        obstacle.id = obs.id
+        obstacle.theta = -math.radians(obs_transform.rotation.yaw)   # in radian
+        obstacle.position.x = obs_transform.location.x
+        obstacle.position.y = - obs_transform.location.y
+        obstacle.position.z = 0
+
+        obstacle.velocity.x = obs_velocity.x
+        obstacle.velocity.y = - obs_velocity.y
+        obstacle.velocity.z = 0
+        if isinstance(obs, carla.Walker):
+            obstacle.type = Type.PEDESTRIAN
+        else:
+            obstacle.type = Type.VEHICLE
+
+        obstacle.length = box.extent.x * 2 
+        obstacle.width = box.extent.y * 2 
+        obstacle.height = box.extent.z * 2 
+
+    return obstacles
+
+
+# ==============================================================================
+# ------- get camera message ---------------------------------------------------
+# ------- TO DO ----------------------------------------------------------------
+# ==============================================================================
+
+def get_camera_msg(image):
+   
+    image_data_array = np.ndarray(shape=(720, 1280, 4), dtype=np.uint8, buffer=image.raw_data)
+    cyber_img = CompressedImage()
+    
+    #cyber_img.frame_id = cyber_img.header.frame_id
+    cyber_img.format = 'jpeg'
+    #cyber_img.measurement_time = cyber_img.header.timestamp_sec
+    cyber_img.data = cv2.imencode('.jpg', image_data_array)[1].tostring()
+    return cyber_img
