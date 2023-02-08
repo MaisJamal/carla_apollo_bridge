@@ -207,7 +207,8 @@ python carla_cyber_bridge/run_bridge.py
 
 ```
 
-![](https://github.com/MaisJamal/carla_apollo_bridge/gifs/GT_obstacles.gif)
+<center><img src="gifs/GT_obstacles.gif" width = "625"></center>
+
 
 #### Interfacing with the simulation
 
@@ -215,10 +216,10 @@ For interfacing with the simulator, a copy of the Carla PythonAPI is included in
 
 ```
 # run in another carla-apollo-13 container terminal:
-cd ~/carla_apollo_bridge_13/carla-python-0.9.13/
+cd ~/carla_apollo_bridge_13/
 
 # change the map
-python util/config.py -m Town04 --host 172.17.0.1
+python carla-python-0.9.13/util/config.py -m Town04 --host 172.17.0.1
 
 # spawn traffic
 python carla-python-0.9.13/examples/generate_traffic.py 
