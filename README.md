@@ -61,6 +61,13 @@ if (speed_limit_from_reference_line == 0) {
 /*******************************************************************/
      
 ```
+
+**Important:** Update controlling parameters for Carla Lincoln vehicle in Apollo:
+
+- Replace the file **control\_conf.pb.txt** in **/apollo/modules/calibration/data/Lincoln2017MKZ\_LGSVL** by the file in **carla\_apollo\_bridge/apollo\_control**
+
+
+
 Now in the apollo container, build apollo...
 ```
 # run in apollo_dev_user container:
@@ -99,7 +106,7 @@ To monitor the planning and control process turn **PNC Monitor** on.
 ```
 # run on local machine:
 
-docker run -it --name=carla-server --privileged -v /tmp/.X11-unix:/tmp/.X11-unix:rw -v /usr/lib/nvidia:/usr/lib/nvidia --device /dev/dri --rm -e __NV_PRIME_RENDER_OFFLOAD=1 -e __GLX_VENDOR_LIBRARY_NAME=nvidia -e DISPLAY=$DISPLAY -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all --gpus=all --name=carla-server --net=host -d carlasim/carla:0.9.13
+docker run -it --privileged -v /tmp/.X11-unix:/tmp/.X11-unix:rw -v /usr/lib/nvidia:/usr/lib/nvidia --device /dev/dri --rm -e __NV_PRIME_RENDER_OFFLOAD=1 -e __GLX_VENDOR_LIBRARY_NAME=nvidia -e DISPLAY=$DISPLAY -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all --gpus=all --name=carla-server --net=host -d carlasim/carla:0.9.13
 ```
 
 
@@ -155,9 +162,8 @@ source ~/.bashrc
 Choose one of Carla maps in Apollo dreamview , then change the map in UnrealEngine to it by:
 
 ```
-cd ~/carla_apollo_bridge_13/carla-python-0.9.13/
+python carla-python-0.9.13/util/config.py -m Town03 --host 172.17.0.1
 
-python util/config.py -m Town03 --host 172.17.0.1
 
 ```
 
@@ -181,6 +187,15 @@ apply_control : true
 
 ```
 
+To publish GroundTruth of obstacles:
+
+```
+# in config/bridge_settings.yaml: 
+
+publish_obstacles_ground_truth: true
+
+```
+
 Run the bridge:
 
 ```
@@ -191,6 +206,8 @@ cd ~/carla_apollo_bridge_13
 python carla_cyber_bridge/run_bridge.py
 
 ```
+
+![](https://github.com/MaisJamal/carla_apollo_bridge/gifs/GT_obstacles.gif)
 
 #### Interfacing with the simulation
 
@@ -204,7 +221,7 @@ cd ~/carla_apollo_bridge_13/carla-python-0.9.13/
 python util/config.py -m Town04 --host 172.17.0.1
 
 # spawn traffic
-python examples/spawn_npc.py -n 50 --host 172.17.0.1
+python carla-python-0.9.13/examples/generate_traffic.py 
 
 ```
 

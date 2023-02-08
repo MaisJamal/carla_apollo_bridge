@@ -485,6 +485,16 @@ def add_obstacle (player,world):
 
     return obstacle
 
+
+def add_obstacle_on_roundabout (world):
+    x_obstacle = -20.0
+    y_obstacle = -1.20
+    yaw_obstacle = 90
+    obs_blueprint = world.get_blueprint_library().find('vehicle.citroen.c3')
+    spawn_point = carla.Transform(carla.Location(x=x_obstacle,y=y_obstacle, z=0.3), carla.Rotation(yaw= yaw_obstacle))
+    obstacle = world.try_spawn_actor(obs_blueprint, spawn_point)
+    return obstacle
+
 def update_obstacle (obstacle):
     transform = obstacle.get_transform()
     x_obs = transform.location.x
@@ -498,6 +508,20 @@ def update_obstacle (obstacle):
     obstacle.set_transform(new_trans)
 
     return obstacle
+
+def update_obstacle_rotating (obstacle):
+    transform = obstacle.get_transform()
+    x_obs = transform.location.x
+    y_obs = transform.location.y
+    z_obs = transform.location.z
+    yaw_obs = transform.rotation.yaw
+    x_obstacle = x_obs + 20 * math.cos(0.1)   # x = x0 + r cost     // r = 20 m
+    y_obstacle = y_obs + 20 * math.sin(0.1)   # y = y0 + r sint
+    new_trans = carla.Transform(carla.Location(x=x_obstacle,y=y_obstacle, z=z_obs), carla.Rotation(yaw= yaw_obs))
+    obstacle.set_transform(new_trans)
+
+    return obstacle
+
 # ==============================================================================
 # ---- Display Manager ----------------------------------------------------------
 # ==============================================================================
@@ -1928,7 +1952,7 @@ def game_loop(args):
     try:
         client = carla.Client(args.host, args.port)
         client.set_timeout(200.0)
-
+        #client.load_world('Town03')
         sim_world = client.get_world()
         if args.sync:
             original_settings = sim_world.get_settings()
@@ -1980,7 +2004,8 @@ def game_loop(args):
             print("actor: ", ac)
 
         
-        obs1 = add_obstacle(ego,sim_world)
+        #obs1 = add_obstacle(ego,sim_world)
+        #obstacle_2 = add_obstacle_on_roundabout(sim_world)
         while True:
 
             #carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0))
@@ -1995,7 +2020,8 @@ def game_loop(args):
             #display_manager.render()
             ######ego.set_location(loc)
             #ego.set_transform(transf)
-            update_obstacle(obs1)
+            #update_obstacle(obs1)
+            #update_obstacle_rotating(obstacle_2)
             """
             velocity_in_car_coord = np.array([1,0,0,1])
             Inverse_transform =  np.array(old_trans.get_inverse_matrix())

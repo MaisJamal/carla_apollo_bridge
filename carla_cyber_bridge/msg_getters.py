@@ -261,9 +261,9 @@ def get_obstacles_msg(world,player) :
             pedestrians.append(actor)
             all_obstacles.append(actor)
 
-    print("hereos: ",hero_num)      
-    print("walkers: ", walkers_num)
-    print("obstacle vehicles: ", other_vehicles_num)        
+    #print("hereos: ",hero_num)      
+    #print("walkers: ", walkers_num)
+    #print("obstacle vehicles: ", other_vehicles_num)        
 
     obstacles = PerceptionObstacles()
     obstacles.header.timestamp_sec = cyber_time.Time.now().to_sec()
