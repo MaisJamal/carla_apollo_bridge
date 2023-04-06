@@ -12,7 +12,7 @@ import time
 
 from cyber_py import cyber, cyber_time , cyber_timer
 
-from msg_getters import get_chassis_msg ,get_localization_msg , get_obstacles_msg ,get_camera_msg
+from msg_getters import get_chassis_msg ,get_localization_msg , get_obstacles_msg ,get_camera_msg , get_tr_lights_msg
 
 from modules.localization.proto.localization_pb2 import LocalizationEstimate
 from modules.canbus.proto.chassis_pb2 import Chassis
@@ -23,6 +23,7 @@ from modules.localization.proto.imu_pb2 import CorrectedImu
 from modules.drivers.gnss.proto.imu_pb2 import Imu
 from modules.localization.proto.gps_pb2 import Gps
 from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle, PerceptionObstacles
+from modules.perception.proto.traffic_light_detection_pb2 import TrafficLightDetection
 from modules.planning.proto.planning_pb2 import ADCTrajectory
 from modules.drivers.proto.sensor_image_pb2 import CompressedImage
 
@@ -97,6 +98,9 @@ class ApolloNode:
 
         if self.params['publish_obstacles_ground_truth']:
             self.obstacles_writer = self.node.create_writer(params['perception_channel'] , PerceptionObstacles)
+
+        if self.params['publish_traffic_light_gt']:
+            self.traffic_lights_writer = self.node.create_writer(params['traffic_light_channel'] , TrafficLightDetection)
         
         if params['apply_control']:
             self.reader = self.node.create_reader(params['control_channel'], ControlCommand, self.control_callback)
@@ -125,6 +129,11 @@ class ApolloNode:
             obstacles = get_obstacles_msg(self.sim_world,self.player)
             obstacles.header.sequence_num = self.msg_seq_counter
             self.obstacles_writer.write(obstacles)
+
+        if self.params['publish_traffic_light_gt']:
+            lights = get_tr_lights_msg(self.sim_world)
+            lights.header.sequence_num = self.msg_seq_counter
+            self.traffic_lights_writer.write(lights)
 
         self.msg_seq_counter += 1
     

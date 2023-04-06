@@ -8,6 +8,7 @@ publish_localization_chassis_msgs: true
 publish_lidar_msg: false
 publish_camera_msg: false
 publish_obstacles_ground_truth: true
+publish_traffic_light_gt: false
 
 # cyber channels:
 localization_channel: '/apollo/localization/pose'
@@ -17,6 +18,7 @@ planning_channel: '/apollo/planning'
 lidar_channel : '/apollo/sensor/lidar128/compensator/PointCloud2'
 camera_channel : '/apollo/sensor/camera/front_6mm/image/compressed'
 perception_channel: '/apollo/perception/obstacles'
+traffic_light_channel: '/apollo/perception/traffic_light'
 imu_channel: '/apollo/sensor/gnss/imu'
 gps_channel: '/apollo/sensor/gnss/odometry'
 tf_channel : '/tf'

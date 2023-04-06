@@ -21,6 +21,8 @@ from modules.localization.proto.imu_pb2 import CorrectedImu
 from modules.drivers.gnss.proto.imu_pb2 import Imu
 from modules.localization.proto.gps_pb2 import Gps
 from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle, PerceptionObstacles
+from modules.perception.proto.traffic_light_detection_pb2 import TrafficLightDetection
+
 from modules.drivers.proto.sensor_image_pb2 import CompressedImage
 
 from carla_common.euler import euler2mat, quat2euler, euler2quat
@@ -236,7 +238,7 @@ def get_chassis_msg(carla_actor_player,planning_flag,speed):
 
 # ==============================================================================
 # ------- get obstacles message ------------------------------------------------
-# ------- TO DO ----------------------------------------------------------------
+# ------- ----- ----------------------------------------------------------------
 # ==============================================================================
 
 
@@ -297,6 +299,46 @@ def get_obstacles_msg(world,player) :
 
     return obstacles
 
+
+# ==============================================================================
+# ------- get traffic lights message ------------------------------------------------
+# ------- ----- ----------------------------------------------------------------
+# ==============================================================================
+
+def get_tr_lights_msg(world):
+
+    color_dict = {
+                'Red':carla.Color(255, 0, 0),
+                'Yellow':carla.Color(255, 255, 0),
+                'Green':carla.Color(0, 255, 0)
+            }
+    
+    light_manager = world.get_lightmanager()
+    lights = light_manager.get_all_lights()
+    for tl in lights:
+        print( tl.id, tl.get_light_state().name,tl.location.x, tl.location.y)#tl.color,
+
+    lights = TrafficLightDetection()
+    lights.header.timestamp_sec = cyber_time.Time.now().to_sec()
+    lights.header.module_name = 'traffic_light'
+    """
+    for tl in world.get_actors().filter('traffic.traffic_light*'):
+        # Trigger/bounding boxes contain half extent and offset relative to the actor.
+        trigger_transform = tl.get_transform()
+        trigger_transform.location += tl.trigger_volume.location
+        trigger_extent = tl.trigger_volume.extent
+        print(tl.id)
+        print(trigger_extent)
+    """
+
+    traffic_light = lights.traffic_light.add()
+
+    traffic_light.color = 2 # 'RED'
+    traffic_light.id = 'signal3'
+    traffic_light.confidence = 1.000000
+    traffic_light.tracking_time = 1.0000000
+
+    return lights
 
 # ==============================================================================
 # ------- get camera message ---------------------------------------------------

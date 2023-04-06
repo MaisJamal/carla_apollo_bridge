@@ -2,6 +2,7 @@
 
 This python package provides a bridge for communicating between Carla's Python API and Apollo.  Besides the source code, a Dockerfile and scripts are provided for getting setup quickly and easily.  This package was tested with Carla version 0.9.13, and Apollo v7.0.0.
 
+<center><img src="gifs/GT_obstacles.gif" width = "625"></center>
 
 ## Installation
 
@@ -112,12 +113,6 @@ docker run -it --privileged -v /tmp/.X11-unix:/tmp/.X11-unix:rw -v /usr/lib/nvid
 
 ### Build docker image / run container for Carla-Apollo-13 bridge
 
-if this is not first run, remove the old container:
-```
-
-docker rm carla-apollo-13
-
-```
 
 ```
 # run on local machine, starting from the root of this repo:
@@ -206,8 +201,6 @@ cd ~/carla_apollo_bridge_13
 python carla_cyber_bridge/run_bridge.py
 
 ```
-
-<center><img src="gifs/GT_obstacles.gif" width = "625"></center>
 
 
 #### Interfacing with the simulation

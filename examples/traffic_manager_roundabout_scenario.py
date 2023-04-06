@@ -1955,14 +1955,7 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(200.0)
 
-        print(client.get_available_maps())
-
-        #input('Let u')
-
-        client.load_world('Town04')
-        client.reload_world()
         sim_world = client.get_world()
-        
         if args.sync:
             original_settings = sim_world.get_settings()
             settings = sim_world.get_settings()
@@ -2012,12 +2005,66 @@ def game_loop(args):
         for ac in sim_world.get_actors():
             print("actor: ", ac)
 
+
+
+        # Set up the TM in synchronous mode
+        traffic_manager = client.get_trafficmanager()
+        traffic_manager.set_synchronous_mode(True)
+
+        # Set a seed so behaviour can be repeated if necessary
+        traffic_manager.set_random_device_seed(0)
+        random.seed(0)
+
+        waypoints = client.get_world().get_map().generate_waypoints(distance=2.0)
+        for i, waypoint in enumerate(waypoints):
+            sim_world.debug.draw_string(waypoint.transform.location, str(i), life_time=340)
+
+        spawn_points = sim_world.get_map().get_spawn_points()
+        spawn_point_1 =  spawn_points[233]
+
+        route_1_indices = [6931,5044,5054,689,695,2823,2599,2825,6605,6267,6263,1027,2897,6977,6989,3111]
+        route_1 = []
+        for ind in route_1_indices:
+            route_1.append(waypoints[ind].transform.location)
+            sim_world.debug.draw_string(waypoints[ind].transform.location, str(ind), life_time=20, color=carla.Color(120,255,0))        
+
+        vehicle_bp = client.get_world().get_blueprint_library().filter('model3')[0]
+        vehicle_bp.set_attribute('role_name', 'obstacle')
+        # Spawn vehicle 
+        vehicle = sim_world.try_spawn_actor(vehicle_bp, spawn_point_1)
+
+        vehicle.set_autopilot(True) # Give TM control over vehicle
+
+        # Set parameters of TM vehicle control, we don't want lane changes
+        traffic_manager.update_vehicle_lights(vehicle, True)
+        traffic_manager.random_left_lanechange_percentage(vehicle, 0)
+        traffic_manager.random_right_lanechange_percentage(vehicle, 0)
+        traffic_manager.auto_lane_change(vehicle, True)
         
-        #obs1 = add_obstacle(ego,sim_world)
-        inner_2 = False # outer obstacle
-        obstacle_2 = add_obstacle_on_roundabout(sim_world,inner_2) 
-        inner_3 = True  # inner obstacle
-        obstacle_3 = add_obstacle_on_roundabout(sim_world,inner_3)
+        # Alternate between routes
+        traffic_manager.set_path(vehicle, route_1)
+        traffic_manager.vehicle_percentage_speed_difference(vehicle, 60)
+
+
+        ############# second obstacle ###############        
+        route_2_indices = np.linspace(6980,7004,13).astype(int).tolist() + [3110] + np.linspace(6920,6932,7).astype(int).tolist() + np.linspace(5041,5053,7).astype(int).tolist()
+        route_2 = []
+        first_waypoint = waypoints[route_2_indices[0]].transform
+        spawn_point_2 = carla.Transform(carla.Location(x=first_waypoint.location.x,y=first_waypoint.location.y, z=first_waypoint.location.z+2), first_waypoint.rotation)
+        # Spawn vehicle 
+        vehicle_2 = sim_world.try_spawn_actor(vehicle_bp, spawn_point_2)
+        vehicle_2.set_autopilot(True) # Give TM control over vehicle
+
+        traffic_manager.update_vehicle_lights(vehicle_2, True)
+        traffic_manager.random_left_lanechange_percentage(vehicle_2, 0)
+        traffic_manager.random_right_lanechange_percentage(vehicle_2, 0)
+        traffic_manager.auto_lane_change(vehicle_2, True)
+        
+        # Alternate between routes
+        traffic_manager.set_path(vehicle_2, route_2)
+        traffic_manager.vehicle_percentage_speed_difference(vehicle_2, 80)### obstacle speed in relation to the lane upper speed limit
+
+        #############################################
         while True:
 
             #carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0))
@@ -2033,8 +2080,8 @@ def game_loop(args):
             ######ego.set_location(loc)
             #ego.set_transform(transf)
             #update_obstacle(obs1)
-            update_obstacle_rotating(obstacle_2,inner_2)
-            update_obstacle_rotating(obstacle_3,inner_3)
+            #update_obstacle_rotating(obstacle_2,inner_2)
+            #update_obstacle_rotating(obstacle_3,inner_3)
             """
             velocity_in_car_coord = np.array([1,0,0,1])
             Inverse_transform =  np.array(old_trans.get_inverse_matrix())
