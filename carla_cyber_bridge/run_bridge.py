@@ -12,6 +12,9 @@ import time
 
 from cyber_py import cyber, cyber_time , cyber_timer
 
+from gnss import Gnss
+from imu import ImuSensor
+
 from msg_getters import get_chassis_msg ,get_localization_msg , get_obstacles_msg ,get_camera_msg , get_tr_lights_msg
 
 from modules.localization.proto.localization_pb2 import LocalizationEstimate
@@ -74,6 +77,7 @@ class ApolloNode:
         self.sensors = sensors
         self.node = cyber.Node("bridge_node")
         self.params = params
+        self.detection_radius = 0
         self.msg_seq_counter = 0
         self.ego_speed = 0
         self.planning_flag = 0
@@ -90,14 +94,29 @@ class ApolloNode:
         
 
         if self.params['publish_localization_chassis_msgs']:
-            self.location_writer = self.node.create_writer(params['localization_channel'], LocalizationEstimate)
+            #self.location_writer = self.node.create_writer(params['localization_channel'], LocalizationEstimate)
             self.chassis_writer = self.node.create_writer(params['chassis_channel'], Chassis)
+
+        if self.params['publish_gnss']:
+            gnss_actors = world.get_actors().filter('sensor.other.gnss*')
+            if not gnss_actors:
+                print("No Gnss sensor associated with the vehicle...")
+            else:
+                self.sensors['gnss'] = Gnss(gnss_actors[0],"gnss",self.node)
+        
+        if self.params['publish_imu']:
+            imu_actors = world.get_actors().filter('sensor.other.imu*')
+            if not imu_actors:
+                print("No Imu sensor associated with the vehicle...")
+            else:
+                self.sensors['imu'] = ImuSensor(imu_actors[0],"imu",self.node)
         
         if self.params['publish_camera_msg']:
             self.camera_writer = self.node.create_writer(params['camera_channel'] , CompressedImage)
 
         if self.params['publish_obstacles_ground_truth']:
             self.obstacles_writer = self.node.create_writer(params['perception_channel'] , PerceptionObstacles)
+            self.detection_radius = params['detection_radius']
 
         if self.params['publish_traffic_light_gt']:
             self.traffic_lights_writer = self.node.create_writer(params['traffic_light_channel'] , TrafficLightDetection)
@@ -115,9 +134,9 @@ class ApolloNode:
             chassis_msg.header.sequence_num = self.msg_seq_counter
             self.chassis_writer.write(chassis_msg)
 
-            localization_msg = get_localization_msg(self.player)
-            localization_msg.header.sequence_num = self.msg_seq_counter
-            self.location_writer.write(localization_msg)
+            #localization_msg = get_localization_msg(self.player)
+            #localization_msg.header.sequence_num = self.msg_seq_counter
+            #self.location_writer.write(localization_msg)
 
         if self.params['publish_camera_msg']:
             camera_msg = get_camera_msg(self.last_image)
@@ -126,7 +145,7 @@ class ApolloNode:
             self.camera_writer.write(camera_msg) 
         
         if self.params['publish_obstacles_ground_truth']:
-            obstacles = get_obstacles_msg(self.sim_world,self.player)
+            obstacles = get_obstacles_msg(self.sim_world,self.player,self.detection_radius)
             obstacles.header.sequence_num = self.msg_seq_counter
             self.obstacles_writer.write(obstacles)
 

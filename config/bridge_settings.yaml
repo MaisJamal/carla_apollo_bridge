@@ -5,10 +5,16 @@ publishing_rate: 100
 
 publish_localization_chassis_msgs: true
 
+publish_gnss: true
+publish_imu: true
+
 publish_lidar_msg: false
 publish_camera_msg: false
+
 publish_obstacles_ground_truth: true
-publish_traffic_light_gt: false
+detection_radius: 30
+
+publish_traffic_light_gt: true
 
 # cyber channels:
 localization_channel: '/apollo/localization/pose'

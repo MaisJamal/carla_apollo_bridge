@@ -98,7 +98,7 @@ bash scripts/bootstrap.sh
 
 ```
 
-In Dreamview setup the mode to **Mkz Lgsvl** , the vehicle to **Lincoln2017MKZ LGSVL** and the map to the needed Carla Town, then run the following modules: **Routing, Planning, Third party perception, Prediction**.
+In Dreamview setup the mode to **Mkz Lgsvl** , the vehicle to **Lincoln2017MKZ LGSVL** and the map to the needed Carla Town, then run the following modules: **Localization, Routing, Planning, Prediction**.
 
 To monitor the planning and control process turn **PNC Monitor** on.
 

@@ -23,6 +23,7 @@ from modules.localization.proto.gps_pb2 import Gps
 from modules.perception.proto.perception_obstacle_pb2 import PerceptionObstacle, PerceptionObstacles
 from modules.perception.proto.traffic_light_detection_pb2 import TrafficLightDetection
 
+
 from modules.drivers.proto.sensor_image_pb2 import CompressedImage
 
 from carla_common.euler import euler2mat, quat2euler, euler2quat
@@ -44,18 +45,57 @@ class Type:    # obstacle type in proto in apollo v7.0.0 has modifications of th
     VEHICLE = 5      # Passenger car or truck.
 
 
+# IDs mapping of traffic signals, from Carla Town 01 to Apollo Town 01
+tl_dict = {37:'signal2',39:"signal1",38:"signal22"}
+
+
+def Euclidean_distance(v1_trans,v2_trans):
+    x1 = v1_trans.x
+    y1 = v1_trans.y
+    x2 = v2_trans.x
+    y2 = v2_trans.y
+    p = math.pow(x1-x2 , 2) + math.pow(y1-y2 , 2)
+    return math.sqrt(p)
+
+
 
 # ==============================================================================
 # ------- get localization message ---------------------------------------------
 # ==============================================================================
 
-def get_localization_msg(carla_actor_player):
+def n2b(x_radius, y_radius, z_radius, b):
+    x_matrix = np.array([
+            [1, 0, 0],
+            [0, np.cos(x_radius), -np.sin(x_radius)],
+            [0, np.sin(x_radius), np.cos(x_radius)]])
+    y_matrix = np.array([
+            [np.cos(y_radius), 0, np.sin(y_radius)],
+            [0, 1, 0],
+            [-np.sin(y_radius), 0, np.cos(y_radius)]])
+    z_matrix = np.array([
+            [np.cos(z_radius), -np.sin(z_radius), 0],
+            [np.sin(z_radius), np.cos(z_radius), 0],
+            [0, 0, 1]])
+    n = np.matrix(np.array(b)) * np.matrix(x_matrix) * np.matrix(y_matrix) * np.matrix(z_matrix)
+    return n
 
-    transform = carla_actor_player.get_transform()
-    linear_vel = carla_actor_player.get_velocity()
-    angular_vel = carla_actor_player.get_angular_velocity()
-    accel = carla_actor_player.get_acceleration()
-    heading = -math.radians(transform.rotation.yaw)
+def get_apollo_pos_shifted(pos, heading, shift):
+    x = pos.x
+    y = -pos.y
+    z = pos.z
+    return [x - shift * math.cos(heading), y - shift * math.sin(heading), z]
+
+
+
+
+
+def get_localization_msg(carla_actor_player):
+    carla_transform = carla_actor_player.get_transform()
+    carla_linear_vel = carla_actor_player.get_velocity()
+    carla_angular_vel = carla_actor_player.get_angular_velocity()
+    carla_acc = carla_actor_player.get_acceleration()
+
+    heading = -math.radians(carla_transform.rotation.yaw)
 
     localization_msg = LocalizationEstimate()
     
@@ -64,141 +104,63 @@ def get_localization_msg(carla_actor_player):
     localization_msg.header.timestamp_sec = cyber_time.Time.now().to_sec()
 
     ####################### Carla transform.location to Apollo Pose ################################
-    x = transform.location.x
-    y = -transform.location.y
-    z = transform.location.z
-    shift = 1.355
-    localization_msg.pose.position.x = x - shift * math.cos(heading)
-    localization_msg.pose.position.y = y - shift * math.sin(heading)
-    localization_msg.pose.position.z = z
+    x_sh, y_sh, z_sh = get_apollo_pos_shifted(carla_transform.location, heading, 1.355)
+    localization_msg.pose.position.x = x_sh
+    localization_msg.pose.position.y = y_sh
+    localization_msg.pose.position.z = z_sh
 
     #######################################################################################
     ####################### Carla transform.rotation to Apollo Quaternion #################
 
-    roll = math.radians(transform.rotation.roll)
-    pitch = -math.radians(transform.rotation.pitch)
-    yaw = -math.radians(transform.rotation.yaw )
-    yaw_for_orientation = -math.radians(transform.rotation.yaw + 90)  ## for testing  ## checked
-    #print(yaw_for_orientation)
-    quat = euler2quat(roll, pitch, yaw_for_orientation)  # w , x, y, z
+    roll = math.radians(carla_transform.rotation.roll)
+    pitch = -math.radians(carla_transform.rotation.pitch)
+    yaw = (((-math.radians(carla_transform.rotation.yaw + 90) % 2.*math.pi) + 2.*math.pi) % 2.*math.pi)
+
+    quat = euler2quat(roll, pitch, yaw)  # w , x, y, z
     localization_msg.pose.orientation.qw = quat[0]
     localization_msg.pose.orientation.qx = quat[1]
     localization_msg.pose.orientation.qy = quat[2]
     localization_msg.pose.orientation.qz = quat[3]
 
-
-    #######################################################################################
-    ####################### Carla transform.rotation to Euler angles #################
-
-
-    if yaw_for_orientation < 0 :
-        yaw_for_euler = 6.28318530718 + yaw_for_orientation
-    else:
-        yaw_for_euler = yaw_for_orientation
-
     localization_msg.pose.euler_angles.x = 0 #roll_apollo           ## for testing
     localization_msg.pose.euler_angles.y = 0 #pitch_apollo         ## for testing
-    
-
-    localization_msg.pose.euler_angles.z =  yaw_for_euler    ## for testing
-
-
-
-
-    #######################################################################################
-    ####################### Carla transform to Apollo transform ###########################
-    
-    transform_msg = TransformStampeds()
-    transform_msg.header.timestamp_sec = cyber_time.Time.now().to_sec()
-    transform_msg.header.frame_id = "world"
-    #print("heading: ", heading , " shift on x : ",- shift * math.cos(heading)," shift on y : ",- shift * math.sin(heading))
-    child = transform_msg.transforms.add()
-    child.child_frame_id = "localization"
-    child.transform.translation.x = x - shift * math.cos(heading)
-    child.transform.translation.y = y - shift * math.sin(heading)
-    child.transform.translation.z = z
-    child.transform.rotation.qw = quat[0]
-    child.transform.rotation.qx = quat[1]
-    child.transform.rotation.qy = quat[2]
-    child.transform.rotation.qz = quat[3]
-    #self.transform_writer.write(transform_msg)
-
+    localization_msg.pose.euler_angles.z = yaw    ## for testing
 
     #######################################################################################
     ####################### Carla velocity to Apollo linear and angular velocity ##########
     ## linear velocity and rotation are needed
     
-    numpy_array = euler2mat(roll, pitch, yaw) # roll, pitch, yaw should be in radian
-    #numpy_array = euler2mat(roll_apollo, pitch_apollo, yaw_apollo)
-    #print(numpy_array)
+    localization_msg.pose.linear_velocity.x = carla_linear_vel.y 
+    localization_msg.pose.linear_velocity.y = carla_linear_vel.x
+    localization_msg.pose.linear_velocity.z = carla_linear_vel.z
 
-    rotation_matrix = numpy_array[:3, :3]
-    tmp_array = rotation_matrix.dot(np.array([linear_vel.x, linear_vel.y, linear_vel.z]))
-    #print(rotation_matrix)
-    #minus_90_rotation_matrix = np.array([  [0.0000000, 1.0000000,  0.0000000], [-1.0000000 , 0.0000000,  0.0000000]  ,[  0.0000000,  0.0000000 , 1.0000000 ]])### for testing
-    #tmp_array = minus_90_rotation_matrix.dot(tmp_array)  ############# for testing 
+    localization_msg.pose.angular_velocity.x = carla_angular_vel.x #  math.radians(angular_vel.x)
+    localization_msg.pose.angular_velocity.y = -carla_angular_vel.y # -math.radians(angular_vel.y)
+    localization_msg.pose.angular_velocity.z = -carla_angular_vel.z # -math.radians( angular_vel.z)
 
-    localization_msg.pose.linear_velocity.x = linear_vel.y #tmp_array[0] 
-    localization_msg.pose.linear_velocity.y = linear_vel.x #-tmp_array[1]
-    localization_msg.pose.linear_velocity.z = linear_vel.z #tmp_array[2]
+    linear_a_x = carla_acc.x    ## for testing- accel.y   ## for testing
+    linear_a_y = -carla_acc.y   ## for testing- accel.x   ## for testing
+    linear_a_z = carla_acc.z   ## for testing
 
-
-    localization_msg.pose.angular_velocity_vrf.x = 0 #  math.radians(angular_vel.x)
-    localization_msg.pose.angular_velocity_vrf.y = 0 # -math.radians(angular_vel.y)
-    localization_msg.pose.angular_velocity_vrf.z = 0 # -math.radians(angular_vel.z)
-    localization_msg.pose.angular_velocity.x = 0 #  math.radians(angular_vel.x)
-    localization_msg.pose.angular_velocity.y = 0 # -math.radians(angular_vel.y)
-    localization_msg.pose.angular_velocity.z = 0 # -math.radians( angular_vel.z)
-    #######################################################################################
-
-    if accel.y > 2 : 
-        accel.y = 2
-    elif accel.y < -2:
-        accel.y = -2
-    if accel.x > 2 : 
-        accel.x = 2
-    elif accel.x < -2:
-        accel.x = -2
-    linear_a_x =  accel.y   ## for testing- accel.y   ## for testing
-    linear_a_y = accel.x   ## for testing- accel.x   ## for testing
-    linear_a_z = accel.z  + 9.8   ## for testing
-
-    localization_msg.pose.linear_acceleration.x = 0 # linear_a_x        ## for testing  / it was accel.x
-    localization_msg.pose.linear_acceleration.y = 0 # linear_a_y       ## for testing  / it was -accel.y
-    localization_msg.pose.linear_acceleration.z = 0 # linear_a_z  ## for testing
+    localization_msg.pose.linear_acceleration.x = linear_a_x # linear_a_x        ## for testing  / it was accel.x
+    localization_msg.pose.linear_acceleration.y = linear_a_y # linear_a_y       ## for testing  / it was -accel.y
+    localization_msg.pose.linear_acceleration.z = linear_a_z # linear_a_z  ## for testing
 
     ################ linear acceleration in vehicle coordination system in Apollo #################
 
-    ### calculate rotation matrix ####
-    heading_in_degrees = -1* transform.rotation.yaw
-    if heading_in_degrees < 0 :
-        heading_in_degrees += 360
-    rotation_angle = heading_in_degrees - 90   # rotation angle around z from velocity/acceleration frame to vehicle frame
-    ##                         ^ Y'                                 
-    ##                         |
-    ##                         |         (vehicle frame)            
-    ##                         |
-    ##         heading <-------o------->X'                        o------->Y                                 
-    ##                                                            |
-    ##                                                            |               (external frame in which velocity and acceleration are given)            
-    ##                                                            |
-    ##                                                            v X
+    enu_accel_velocity = n2b(pitch, roll, yaw, np.array([linear_a_x, linear_a_y, linear_a_z]))
+    localization_msg.pose.linear_acceleration_vrf.x = enu_accel_velocity[0, 0]
+    localization_msg.pose.linear_acceleration_vrf.y = enu_accel_velocity[0, 1]
+    localization_msg.pose.linear_acceleration_vrf.z = enu_accel_velocity[0, 2]
 
-    r = R.from_euler('z', rotation_angle, degrees=True)
-    #print("rotation angle: ",rotation_angle)
-    rot_mat = r.as_dcm()
-    #print(rot_mat) # print rotation matrix
-    rot_mat = r.inv().as_dcm()
-    rotated_a = rot_mat.dot(np.array([linear_a_x, linear_a_y, linear_a_z]))
-    localization_msg.pose.linear_acceleration_vrf.x = 0 # rotated_a[0]
-    localization_msg.pose.linear_acceleration_vrf.y = 0 # rotated_a[1]
-    localization_msg.pose.linear_acceleration_vrf.z = 0 # rotated_a[2]       ## for testing
+    enu_angular_velocity = n2b(pitch, roll, yaw, np.array([carla_angular_vel.x,
+                                                                -carla_angular_vel.y,
+                                                                -carla_angular_vel.z]))
+    localization_msg.pose.angular_velocity_vrf.x = enu_angular_velocity[0, 0]
+    localization_msg.pose.angular_velocity_vrf.y = enu_angular_velocity[0, 1]
+    localization_msg.pose.angular_velocity_vrf.z = enu_angular_velocity[0, 2]
     localization_msg.pose.heading = heading
-    #print("old x : ", x)
-    #print("old y : ", y)
-    
-    #print("new x : ", localization_msg.pose.position.x)
-    #print("new y : ", localization_msg.pose.position.y)
+
     return localization_msg
 
 # ==============================================================================
@@ -242,7 +204,7 @@ def get_chassis_msg(carla_actor_player,planning_flag,speed):
 # ==============================================================================
 
 
-def get_obstacles_msg(world,player) : 
+def get_obstacles_msg(world,player,detection_radius) : 
     other_vehicles_num = 0
     walkers_num = 0
     hero_num = 0
@@ -254,14 +216,18 @@ def get_obstacles_msg(world,player) :
         #print("act ",actor)
         if actor.attributes.get('role_name') == 'hero':
             hero_num += 1
-        if isinstance(actor, carla.Vehicle) and actor.attributes.get('role_name') != 'hero':
-            other_vehicles_num +=1
-            all_obstacles.append(actor)
-            
-        elif isinstance(actor, carla.Walker):
-            walkers_num +=1
-            pedestrians.append(actor)
-            all_obstacles.append(actor)
+            continue
+        else:
+            distance = Euclidean_distance(actor.get_transform().location,player.get_transform().location)
+            if distance <= detection_radius:
+                if isinstance(actor, carla.Vehicle) and actor.attributes.get('role_name') != 'hero':
+                    other_vehicles_num +=1
+                    all_obstacles.append(actor)
+                    
+                elif isinstance(actor, carla.Walker):
+                    walkers_num +=1
+                    pedestrians.append(actor)
+                    all_obstacles.append(actor)
 
     #print("hereos: ",hero_num)      
     #print("walkers: ", walkers_num)
@@ -306,37 +272,36 @@ def get_obstacles_msg(world,player) :
 # ==============================================================================
 
 def get_tr_lights_msg(world):
+    all_traffic_lights = world.get_actors().filter('traffic.traffic_light*')
 
-    color_dict = {
-                'Red':carla.Color(255, 0, 0),
-                'Yellow':carla.Color(255, 255, 0),
-                'Green':carla.Color(0, 255, 0)
-            }
-    
-    light_manager = world.get_lightmanager()
-    lights = light_manager.get_all_lights()
-    for tl in lights:
-        print( tl.id, tl.get_light_state().name,tl.location.x, tl.location.y)#tl.color,
-
+    #print("number of traffic lights: ", len(all_traffic_lights) )
     lights = TrafficLightDetection()
     lights.header.timestamp_sec = cyber_time.Time.now().to_sec()
     lights.header.module_name = 'traffic_light'
-    """
-    for tl in world.get_actors().filter('traffic.traffic_light*'):
-        # Trigger/bounding boxes contain half extent and offset relative to the actor.
-        trigger_transform = tl.get_transform()
-        trigger_transform.location += tl.trigger_volume.location
-        trigger_extent = tl.trigger_volume.extent
-        print(tl.id)
-        print(trigger_extent)
-    """
 
-    traffic_light = lights.traffic_light.add()
+    for tl in all_traffic_lights:
+        #print(tl.id, tl.get_state(), tl.get_location().x, tl.get_location().y)
 
-    traffic_light.color = 2 # 'RED'
-    traffic_light.id = 'signal3'
-    traffic_light.confidence = 1.000000
-    traffic_light.tracking_time = 1.0000000
+        if tl.id in tl_dict:
+            #print(tl.id)
+            ###############################
+            ######### RED = 1 #############
+            ######### YELLOW = 2 ##########
+            ######### GREEN = 3 ###########
+            ###############################
+            if tl.get_state() == carla.libcarla.TrafficLightState.Red:
+                apollo_color = 1
+            elif tl.get_state() == carla.libcarla.TrafficLightState.Yellow:
+                apollo_color = 2
+            elif tl.get_state() == carla.libcarla.TrafficLightState.Green:
+                apollo_color = 3
+
+            traffic_light = lights.traffic_light.add()
+
+            traffic_light.color = apollo_color
+            traffic_light.id = tl_dict[tl.id]
+            traffic_light.confidence = 1.000000
+            traffic_light.tracking_time = 1.0000000
 
     return lights
 
