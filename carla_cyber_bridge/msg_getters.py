@@ -46,8 +46,10 @@ class Type:    # obstacle type in proto in apollo v7.0.0 has modifications of th
 
 
 # IDs mapping of traffic signals, from Carla Town 01 to Apollo Town 01
-tl_dict = {37:'signal2',39:"signal1",38:"signal22"}
-
+#tl_dict = {37:'signal2',39:"signal1",38:"signal22",34:"signal26",35:"signal25",36:"signal24",31:"signal29"
+#            ,32:"signal28",33:"signal27",53:"signal7",52:"signal8",51:"signal9"}
+tl_dict = {(349, 324):'signal2',(324, 333):"signal1",(332, 316):"signal22",(106, 324):"signal26",(85, 316):"signal25",(75, 333):"signal24",(94, 209):"signal29"
+            ,(102, 192):"signal28",(85, 185):"signal27",(341, 209):"signal7",(323, 202):"signal8",(331, 184):"signal9"}
 
 def Euclidean_distance(v1_trans,v2_trans):
     x1 = v1_trans.x
@@ -238,8 +240,11 @@ def get_obstacles_msg(world,player,detection_radius) :
     obstacles.header.module_name = 'perception_obstacle'
     for obs in all_obstacles:
         #print("car id ",car.id)
+        is_bike = False
         obs_transform = obs.get_transform()
         obs_velocity = obs.get_velocity()
+        if obs.attributes.get('number_of_wheels') == str(2):
+            is_bike = True
         box = obs.bounding_box
         #print(box.location)         # Location relative to the vehicle.
         #print(box.extent) 
@@ -254,14 +259,29 @@ def get_obstacles_msg(world,player,detection_radius) :
         obstacle.velocity.x = obs_velocity.x
         obstacle.velocity.y = - obs_velocity.y
         obstacle.velocity.z = 0
-        if isinstance(obs, carla.Walker):
-            obstacle.type = Type.PEDESTRIAN
-        else:
-            obstacle.type = Type.VEHICLE
 
         obstacle.length = box.extent.x * 2 
         obstacle.width = box.extent.y * 2 
         obstacle.height = box.extent.z * 2 
+
+        ### TODO add bike check/BICYCLE type
+        if isinstance(obs, carla.Walker):
+            obstacle.type = Type.PEDESTRIAN
+        else:
+            if is_bike:
+                obstacle.type = Type.BICYCLE
+                if box.extent.y < 0.1 :
+                    obstacle.width = 0.75
+                if (box.extent.z * 2 ) > 2 :
+                    obstacle.height = 1.9
+
+            #elif obs_velocity.x == 0 and obs_velocity.y ==0:
+            #    obstacle.type = Type.UNKNOWN_UNMOVABLE
+            
+            else:
+                obstacle.type = Type.VEHICLE
+
+        
 
     return obstacles
 
@@ -281,8 +301,8 @@ def get_tr_lights_msg(world):
 
     for tl in all_traffic_lights:
         #print(tl.id, tl.get_state(), tl.get_location().x, tl.get_location().y)
-
-        if tl.id in tl_dict:
+        #print((int(tl.get_location().x),int(tl.get_location().y)) )
+        if (int(tl.get_location().x),int(tl.get_location().y)) in tl_dict:
             #print(tl.id)
             ###############################
             ######### RED = 1 #############
@@ -299,7 +319,7 @@ def get_tr_lights_msg(world):
             traffic_light = lights.traffic_light.add()
 
             traffic_light.color = apollo_color
-            traffic_light.id = tl_dict[tl.id]
+            traffic_light.id = tl_dict[(int(tl.get_location().x),int(tl.get_location().y))]
             traffic_light.confidence = 1.000000
             traffic_light.tracking_time = 1.0000000
 
