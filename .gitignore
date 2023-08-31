@@ -139,3 +139,4 @@ dmypy.json
 # additional
 scenario_runner/
 carla_server/
+examples/manual_control_13.py

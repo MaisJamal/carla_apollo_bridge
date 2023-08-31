@@ -173,7 +173,7 @@ Run these commands inside the carla-apollo-13 container
 
 cd ~/carla_apollo_bridge_13
 
-python examples/manual_control_13.py 
+python examples/manual_control.py 
 
 ```
 

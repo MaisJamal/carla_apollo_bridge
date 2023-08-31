@@ -65,6 +65,7 @@ from __future__ import print_function
 import glob
 import os
 import sys
+import yaml
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -74,7 +75,10 @@ try:
 except IndexError:
     pass
 
-
+#try:
+#    os.environ["DISPLAY"]
+#except:
+ #   os.environ["SDL_VIDEODRIVER"] = "dummy"
 # ==============================================================================
 # -- imports -------------------------------------------------------------------
 # ==============================================================================
@@ -333,7 +337,7 @@ class World(object):
             #   wheel.tire_friction = wheel.tire_friction * 0.8
             #   wheel.max_brake_torque = 128.82
             physics_control.wheels = wheels
-            physics_control.damping_rate_zero_throttle_clutch_engaged = 0.5
+            physics_control.damping_rate_zero_throttle_clutch_engaged = 0.35
             actor.apply_physics_control(physics_control)
         except Exception:
             pass
@@ -1193,8 +1197,11 @@ def game_loop(args):
     try:
         client = carla.Client(args.host, args.port)
         client.set_timeout(20.0)
-
+        
         sim_world = client.get_world()
+        ### set weather to clear weather (other presets: WetCloudySunset,ClearNoon ..)
+        sim_world.set_weather(carla.WeatherParameters.CloudyNoon)
+        
         if args.sync:
             original_settings = sim_world.get_settings()
             settings = sim_world.get_settings()
@@ -1313,6 +1320,11 @@ def main():
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
+
+    params = yaml.safe_load(open("config/bridge_settings.yaml"))
+    carla_params = params['carla']
+    args.host = carla_params['host']
+    args.port = carla_params['port']
 
     log_level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
