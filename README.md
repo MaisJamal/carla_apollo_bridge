@@ -219,7 +219,7 @@ cd ~/carla_apollo_bridge_13/
 python carla-python-0.9.13/util/config.py -m Town04 --host 172.17.0.1
 
 # spawn traffic
-python carla-python-0.9.13/examples/generate_traffic.py 
+python examples/generate_traffic.py 
 
 ```
 
