@@ -1,4 +1,4 @@
-./build_docker.sh
+# ./build_docker.sh
 xhost +
 docker run \
     -e DISPLAY \

@@ -1208,9 +1208,6 @@ def game_loop(args):
             if not settings.synchronous_mode:
                 settings.synchronous_mode = True
                 settings.fixed_delta_seconds = 0.05
-                settings.substepping = True
-                settings.max_substep_delta_time = 0.003125
-                settings.max_substeps = 16
             sim_world.apply_settings(settings)
 
             traffic_manager = client.get_trafficmanager()
