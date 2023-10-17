@@ -46,10 +46,16 @@ class Type:    # obstacle type in proto in apollo v7.0.0 has modifications of th
 
 
 # IDs mapping of traffic signals, from Carla Town 01 to Apollo Town 01
-#tl_dict = {37:'signal2',39:"signal1",38:"signal22",34:"signal26",35:"signal25",36:"signal24",31:"signal29"
-#            ,32:"signal28",33:"signal27",53:"signal7",52:"signal8",51:"signal9"}
-tl_dict = {(349, 324):'signal2',(324, 333):"signal1",(332, 316):"signal22",(106, 324):"signal26",(85, 316):"signal25",(75, 333):"signal24",(94, 209):"signal29"
-            ,(102, 192):"signal28",(85, 185):"signal27",(341, 209):"signal7",(323, 202):"signal8",(331, 184):"signal9"}
+
+tl_dict = {(323, 4):"signal0"    ,(324, 333):"signal1"  ,(349, 324):"signal2"  ,(77, 4):"signal3"     ,(167, -4):"signal4"
+           ,(160, 12):"signal5"  ,(143, 4):"signal6"    ,(341, 209):"signal7"  ,(323, 202):"signal8"  ,(331, 184):"signal9"
+           ,(341, 143):"signal10",(321, 136):"signal11" ,(331, 118):"signal12" ,(341, 69):"signal13"  ,(348, -4):"signal14" 
+           ,(341, 12):"signal15" ,(321, 62):"signal16"  ,(331, 44):"signal17"  ,(144, 62):"signal18"  ,(151, 45):"signal19" 
+           ,(168, 53):"signal20" ,(95, 12):"signal21"   ,(332, 316):"signal22" ,(102, -4):"signal23"  ,(75, 333):"signal24"
+           ,(85, 316):"signal25" ,(106, 324):"signal26" ,(85, 185):"signal27"  ,(102, 192):"signal28" ,(94, 209):"signal29"
+           ,(85, 119):"signal30" ,(102, 126):"signal31" ,(94, 144):"signal32"  ,(85, 45):"signal33"   ,(102, 52):"signal34" 
+           ,(94, 70):"signal35" 
+            }
 
 def Euclidean_distance(v1_trans,v2_trans):
     x1 = v1_trans.x

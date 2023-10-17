@@ -80,7 +80,7 @@ Now in the apollo container, build apollo...
 ./apollo.sh build_gpu
 ```
 
-Add [Carla Maps](https://github.com/MaisJamal/Carla_Towns-Apollo_maps) to Apollo.
+Add [Carla Maps](https://github.com/MaisJamal/Carla_Towns-Apollo_maps) to Apollo. Note: currently the bridge publishes the traffic lights' groundtruth of Town01 only. The traffic lights of other maps will be added to their maps and the bridge soon.
 
 
 
