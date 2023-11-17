@@ -1,6 +1,6 @@
 # Carla Apollo Bridge
 
-This python package provides a bridge for communicating between Carla's Python API and Apollo.  Besides the source code, a Dockerfile and scripts are provided for getting setup quickly and easily.  This package was tested with Carla version 0.9.13, and Apollo v7.0.0.
+This python package provides a bridge for communicating between Carla's Python API and Apollo.  Besides the source code, a Dockerfile and scripts are provided for getting setup quickly and easily.  This package was tested with Carla version 0.9.13, and Apollo v7.0.0 and v8.0.0.
 
 <center><img src="gifs/signalized_T_intersection.gif" width = "625"></center>
 
@@ -20,7 +20,7 @@ For the simplest setup, we will run Carla in Docker.
 
 #### nvidia-docker-2
 
-[https://github.com/nvidia/nvidia-docker-2](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+[https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
 ## Setup / Getting Started
 
@@ -30,6 +30,11 @@ The following commands will be run with 3 containers:
 - carla-apollo-13: bridge between apollo and carla-server containers, has cyber_py and carla python packages installed and unlike apollo container, can easily display gui applications on local machine
 - apollo_dev_user: runs the apollo stack
 
+## End-to-end video tutorial of CARLA simulator with Apollo driving
+ 
+End-to-end tutorial that goes through how to install, configure and use this Carla-Apollo-Bridge, with Carla simulator (v0.9.13) and Apollo driving software (v8.0.0): 
+
+[https://youtu.be/2dQC3ToJGJU?si=6mZMHP1RRZHPRggX](https://youtu.be/2dQC3ToJGJU?si=6mZMHP1RRZHPRggX)
 
 ### Clone and build Apollo
 
@@ -219,7 +224,7 @@ cd ~/carla_apollo_bridge_13/
 python carla-python-0.9.13/util/config.py -m Town04 --host 172.17.0.1
 
 # spawn traffic
-python examples/generate_traffic.py 
+python examples/generate_traffic.py --async
 
 ```
 
