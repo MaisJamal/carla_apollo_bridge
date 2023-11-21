@@ -18,7 +18,7 @@ For the simplest setup, we will run Carla in Docker.
 
 [https://docs.docker.com/install/linux/docker-ce/ubuntu/](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
 
-#### nvidia-docker-2
+#### NVIDIA Container Toolkit
 
 [https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
