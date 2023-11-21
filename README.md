@@ -30,7 +30,7 @@ The following commands will be run with 3 containers:
 - carla-apollo-13: bridge between apollo and carla-server containers, has cyber_py and carla python packages installed and unlike apollo container, can easily display gui applications on local machine
 - apollo_dev_user: runs the apollo stack
 
-## End-to-end video tutorial of CARLA simulator with Apollo driving
+### End-to-end video tutorial of CARLA simulator with Apollo driving
  
 End-to-end tutorial that goes through how to install, configure and use this Carla-Apollo-Bridge, with Carla simulator (v0.9.13) and Apollo driving software (v8.0.0): 
 
