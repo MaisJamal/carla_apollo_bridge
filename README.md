@@ -200,6 +200,15 @@ publish_obstacles_ground_truth: true
 
 ```
 
+To publish LIDAR data , adjust LIDAR attributes in **addLidar** method in manual_control.py, then:
+
+```
+# in config/bridge_settings.yaml: 
+
+publish_lidar_msg: true
+
+```
+
 Run the bridge:
 
 ```

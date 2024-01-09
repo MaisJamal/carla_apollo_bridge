@@ -14,6 +14,7 @@ from cyber_py import cyber, cyber_time , cyber_timer
 
 from gnss import Gnss
 from imu import ImuSensor
+from lidar import LidarSensor
 
 from msg_getters import get_chassis_msg ,get_localization_msg , get_obstacles_msg ,get_camera_msg , get_tr_lights_msg
 
@@ -111,6 +112,13 @@ class ApolloNode:
             else:
                 self.sensors['imu'] = ImuSensor(imu_actors[0],"imu",self.node)
         
+        if self.params['publish_lidar_msg']:
+            lidar_actors = world.get_actors().filter('sensor.lidar.ray_cast*')
+            if not lidar_actors:
+                print("No LIDAR sensor associated with the vehicle...")
+            else:
+                self.sensors['lidar'] = LidarSensor(lidar_actors[0],"lidar",self.node)
+
         if self.params['publish_camera_msg']:
             self.camera_writer = self.node.create_writer(params['camera_channel'] , CompressedImage)
 

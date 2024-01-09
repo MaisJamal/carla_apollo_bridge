@@ -290,6 +290,9 @@ class World(object):
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
         self.camera_manager.transform_index = cam_pos_index
         self.camera_manager.set_sensor(cam_index, notify=False)
+        # add lidar to the ego vehicle 
+        addLidar(self.world,self.player)
+
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
 
@@ -1182,6 +1185,29 @@ class CameraManager(object):
         if self.recording:
             image.save_to_disk('_out/%08d' % image.frame)
 
+
+# --------------
+# Add a new LIDAR sensor to my ego
+# --------------
+
+def addLidar(world,ego_vehicle):
+    lidar_cam = None
+    lidar_bp = world.get_blueprint_library().find('sensor.lidar.ray_cast')
+    lidar_bp.set_attribute('channels','32')
+    lidar_bp.set_attribute('points_per_second', '100000')
+    lidar_bp.set_attribute('rotation_frequency','40')
+    lidar_bp.set_attribute('range', '10000')
+    lidar_bp.set_attribute('rotation_frequency', '20')            
+    lidar_bp.set_attribute('upper_fov', '1.0')
+    lidar_bp.set_attribute('lower_fov', '-20.0')
+    lidar_bp.set_attribute('role_name', 'lidar128')
+    
+    lidar_location = carla.Location(0,0,2.4)
+    lidar_rotation = carla.Rotation(0,0,0)
+    lidar_transform = carla.Transform(lidar_location,lidar_rotation)
+    lidar_sen = world.spawn_actor(lidar_bp,lidar_transform,attach_to=ego_vehicle)
+    #lidar_sen.listen(lambda point_cloud: point_cloud.save_to_disk('tutorial/new_lidar_output/%.6d.ply' % point_cloud.frame))
+    
 
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------------
