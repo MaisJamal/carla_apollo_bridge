@@ -83,7 +83,7 @@ except IndexError:
 # -- imports -------------------------------------------------------------------
 # ==============================================================================
 
-
+import time
 import carla
 
 from carla import ColorConverter as cc
@@ -1215,6 +1215,7 @@ def addLidar(world,ego_vehicle):
 
 
 def game_loop(args):
+    timestr = "recording_"+time.strftime("%Y%m%d-%H%M%S") +".log"
     pygame.init()
     pygame.font.init()
     world = None
@@ -1224,8 +1225,13 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(20.0)
         
+        #print(client.show_recorder_file_info("/home/carla/.config/Epic/CarlaUE4/Saved/recording_20240220-103549.log",False))
+        #client.replay_file("/home/carla/.config/Epic/CarlaUE4/Saved/recording_20240220-103549.log",0,11,777,False)
+        #client.start_recorder(timestr , True)
+        
         sim_world = client.get_world()
         ### set weather to clear weather (other presets: WetCloudySunset,ClearNoon ..)
+        
         sim_world.set_weather(carla.WeatherParameters.CloudyNoon)
         
         if args.sync:
@@ -1252,13 +1258,15 @@ def game_loop(args):
         hud = HUD(args.width, args.height)
         world = World(sim_world, hud, args)
         controller = KeyboardControl(world, args.autopilot)
-
+        print("****** player id is ",world.player.id)
+        
         if args.sync:
             sim_world.tick()
         else:
             sim_world.wait_for_tick()
 
         clock = pygame.time.Clock()
+        
         while True:
             if args.sync:
                 sim_world.tick()
@@ -1268,7 +1276,7 @@ def game_loop(args):
             world.tick(clock)
             world.render(display)
             pygame.display.flip()
-
+        
     finally:
 
         if original_settings:
@@ -1278,7 +1286,9 @@ def game_loop(args):
             client.stop_recorder()
 
         if world is not None:
+            #client.stop_recorder()
             world.destroy()
+
 
         pygame.quit()
 
